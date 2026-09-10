@@ -77,7 +77,7 @@ It requires a ready enrolled verifier; credential registration alone does not ma
 that verifier available. Complete runtime installation and real harness acceptance
 are still in progress. The task CLI does not connect to Herdr or choose panes.
 
-This build consumes public API 0.4.0 / protocol 4. It includes generated context
+This build consumes public API 0.4.1 / protocol 4. It includes generated context
 references and response validators. The compiled caller smoke was exercised against
 a live backend with modeled terminal observations; that is not actual harness
 launch or system-pane acceptance.
@@ -131,3 +131,9 @@ with that review and a new apply request file. Existing exports are never replac
 The compiled catalog smoke exercises live import/patch, complete validation,
 review/apply, retries, canonical export round trip and rollback without Node/Bun
 on PATH. Task operations and the complete system runtime remain later work.
+
+The Phase 04 receive client modules verify shared envelopes, publish protected
+artifacts without replacement, and confirm before returning content. The compiled
+`scripts/receive-smoke.ts` exercises concurrent publication, lost confirmation
+responses, stable retries, integrity and filesystem rejection. Its transport is
+simulated; a public receive endpoint and command are not wired yet.
