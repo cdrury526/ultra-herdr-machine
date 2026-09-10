@@ -77,7 +77,7 @@ It requires a ready enrolled verifier; credential registration alone does not ma
 that verifier available. Complete runtime installation and real harness acceptance
 are still in progress. The task CLI does not connect to Herdr or choose panes.
 
-This build consumes public API 0.4.1 / protocol 4. It includes generated context
+This build consumes public API 0.5.0 / protocol 5. It includes generated context
 references and response validators. The compiled caller smoke was exercised against
 a live backend with modeled terminal observations; that is not actual harness
 launch or system-pane acceptance.
@@ -132,8 +132,27 @@ The compiled catalog smoke exercises live import/patch, complete validation,
 review/apply, retries, canonical export round trip and rollback without Node/Bun
 on PATH. Task operations and the complete system runtime remain later work.
 
-The Phase 04 receive client modules verify shared envelopes, publish protected
-artifacts without replacement, and confirm before returning content. The compiled
-`scripts/receive-smoke.ts` exercises concurrent publication, lost confirmation
-responses, stable retries, integrity and filesystem rejection. Its transport is
-simulated; a public receive endpoint and command are not wired yet.
+## Receive a message
+
+From the intended enrolled session, run the compact instruction delivered to it:
+
+```bash
+herdr-cli receive --ticket <opaque-ticket>
+```
+
+Use `--config` for a nondefault protected machine profile. The command resolves
+its caller internally, verifies message integrity, saves an owner-only artifact
+under `<config>.messages/`, and confirms receipt before returning JSON with the
+verified envelope, artifact path and original receipt identity. Retry the same
+instruction after interruption; it reuses the artifact and does not repeat receipt
+effects. Failed or revoked receives print no message body, artifact path or ticket.
+
+The current Phase 04 backend supports live-session assignment receipt. Historical
+operator retrieval and other message receipt effects remain in implementation;
+dispatch, lifecycle commands and automatic worker launch are not available yet.
+The API uses endpoint protocol 5; immutable stored message envelopes retain revision 4.
+
+`scripts/receive-smoke.ts` compiles to a standalone smoke covering local publication
+and simulated transport interruptions. Private deployment tooling additionally
+verifies the shipped command with real machine credentials, public endpoints and
+SIGKILL at publication/confirmation boundaries; runtime observations are modeled.
