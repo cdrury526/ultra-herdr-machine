@@ -1,3 +1,5 @@
+import { addHistoryCommands } from "./history";
+import { HistoryError } from "../history/message";
 import { addReceiveCommand } from "./receive";
 import { ReceiveError } from "../receive/artifact";
 import { addCatalogCommands } from "./catalog";
@@ -19,12 +21,13 @@ addAuthCommands(program);
 addCatalogCommands(program);
 addContextCommands(program);
 addReceiveCommand(program);
+addHistoryCommands(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();
 } catch (error) {
   // Avoid backend exception bodies, validator inputs and tokens in CLI diagnostics.
-  const message = (error instanceof CatalogError || error instanceof ReceiveError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
+  const message = (error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
     : error instanceof Error && error.constructor === Error ? error.message
     : "Operation failed. Check command inputs and current authorization.";
   console.error(message);

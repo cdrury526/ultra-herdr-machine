@@ -77,7 +77,7 @@ It requires a ready enrolled verifier; credential registration alone does not ma
 that verifier available. Complete runtime installation and real harness acceptance
 are still in progress. The task CLI does not connect to Herdr or choose panes.
 
-This build consumes public API 0.5.0 / protocol 5. It includes generated context
+This build consumes public API 0.6.0 / protocol 6. It includes generated context
 references and response validators. The compiled caller smoke was exercised against
 a live backend with modeled terminal observations; that is not actual harness
 launch or system-pane acceptance.
@@ -147,12 +147,30 @@ verified envelope, artifact path and original receipt identity. Retry the same
 instruction after interruption; it reuses the artifact and does not repeat receipt
 effects. Failed or revoked receives print no message body, artifact path or ticket.
 
-The current Phase 04 backend supports live-session assignment receipt. Historical
-operator retrieval and other message receipt effects remain in implementation;
+The current Phase 04 backend supports live-session assignment receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
 dispatch, lifecycle commands and automatic worker launch are not available yet.
-The API uses endpoint protocol 5; immutable stored message envelopes retain revision 4.
+The API uses endpoint protocol 6; immutable stored message envelopes retain revision 4.
 
 `scripts/receive-smoke.ts` compiles to a standalone smoke covering local publication
 and simulated transport interruptions. Private deployment tooling additionally
 verifies the shipped command with real machine credentials, public endpoints and
 SIGKILL at publication/confirmation boundaries; runtime observations are modeled.
+
+## Inspect a retained message
+
+```bash
+herdr-cli history message --task <task-id> --message <message-id>
+```
+
+This verifies and saves immutable content without confirming a delivery or applying
+an action. Normal reads resolve the live caller and enforce its retained message
+cutoff. For a recorded released session, use `--released-session <session-id>` with
+that machine's `--config`; both the session and retained binding must be released.
+For operator inspection, select `--operator-profile <file>` explicitly; it requires
+`history.manage` and cannot be combined with released-session mode. `--digest`
+optionally asserts the exact expected SHA-256 content identity.
+
+Reads return `mode: "history"`, the envelope and private artifact path. They expose
+no current task/delivery status and do not reset retention or receipt clocks. The
+current session path covers direct participant grants; ancestor and packet access
+are still being implemented. Historical ticket confirmation is separate work.
