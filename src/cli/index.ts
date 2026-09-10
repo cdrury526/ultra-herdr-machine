@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { PROTOCOL_VERSION } from "@ultra-herdr/api";
+import { addAuthCommands } from "./auth";
 import metadata from "../../package.json";
 
 const program = new Command()
@@ -8,5 +9,14 @@ const program = new Command()
   .version(metadata.version)
   .showHelpAfterError();
 
+addAuthCommands(program);
 program.action(() => program.help());
-await program.parseAsync();
+try {
+  await program.parseAsync();
+} catch (error) {
+  // Avoid backend exception bodies, validator inputs and tokens in CLI diagnostics.
+  const message = error instanceof Error && error.constructor === Error
+    ? error.message : "Credential operation failed. Check protected inputs and current authorization.";
+  console.error(message);
+  process.exitCode = 1;
+}
