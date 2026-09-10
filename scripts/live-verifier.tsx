@@ -6,6 +6,7 @@ import { loadProfile, clientFor } from "../src/auth/client";
 import { readJson, withCredentialLock, writeLocked } from "../src/auth/storage";
 import { collectMachineObservation, type MachineObservation } from "../src/herdr/observations";
 import { readStableProcess } from "../src/context/linux";
+import { ContextError } from "../src/context/errors";
 
 const settingsSchema = z.object({
   config: z.string().min(1), socketPath: z.string().min(1), sessionName: z.string().min(1),
@@ -13,6 +14,7 @@ const settingsSchema = z.object({
   durationMs: z.number().int().min(1000).max(3_600_000),
   pollMs: z.number().int().min(100).max(5000),
   timeoutMs: z.number().int().min(100).max(10_000),
+  observationRetryDelayMs: z.number().int().min(10).max(1000),
   maxResponseBytes: z.number().int().min(1024).max(16 * 1024 * 1024),
   maxTerminals: z.number().int().min(1).max(4096),
 }).strict();
@@ -47,9 +49,20 @@ await withCredentialLock(statusFile, async () => {
     const s = settings();
     if (resolve(s.config) !== config || s.sessionName !== initial.sessionName || s.socketPath !== initial.socketPath)
       throw new Error("Driver identity settings changed");
-    return collectMachineObservation({ socketPath: s.socketPath, sessionName: s.sessionName,
-      uid: process.getuid!(), timeoutMs: s.timeoutMs, maxResponseBytes: s.maxResponseBytes },
-    { maxTerminals: s.maxTerminals, maxForegroundProcesses: 64 });
+    const deadline = performance.now() + s.timeoutMs;
+    while (true) {
+      try {
+        return await collectMachineObservation({ socketPath: s.socketPath, sessionName: s.sessionName,
+          uid: process.getuid!(), timeoutMs: Math.max(1, Math.floor(deadline - performance.now())), maxResponseBytes: s.maxResponseBytes },
+        { maxTerminals: s.maxTerminals, maxForegroundProcesses: 64 });
+      } catch (error) {
+        // A changing process invalidates that read-only capture, not necessarily the server.
+        // Retry a wholly new capture within one deadline; never publish a partial snapshot.
+        if (!(error instanceof ContextError) || error.code !== "STALE_BINDING" ||
+            deadline - performance.now() <= s.observationRetryDelayMs) throw error;
+        await pause(s.observationRetryDelayMs);
+      }
+    }
   };
   const first = await observe();
   const ownership = owned(first); // No registration/ready claim without real local ownership.
