@@ -3,8 +3,9 @@
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
-verification. Complete enrollment/system installation, task operations and the
-visible runtime are not yet available.
+verification. Message receipt, retained history and typed worker reports are available. Complete
+enrollment/system installation, dispatch, parent decisions and the visible runtime
+are not yet available.
 
 Requires Bun 1.4.2 to build. Installed compiled binaries do not require Node.
 
@@ -77,7 +78,7 @@ It requires a ready enrolled verifier; credential registration alone does not ma
 that verifier available. Complete runtime installation and real harness acceptance
 are still in progress. The task CLI does not connect to Herdr or choose panes.
 
-This build consumes public API 0.6.0 / protocol 6. It includes generated context
+This build consumes public API 0.7.0 / protocol 7. It includes generated context
 references and response validators. The compiled caller smoke was exercised against
 a live backend with modeled terminal observations; that is not actual harness
 launch or system-pane acceptance.
@@ -130,7 +131,7 @@ with that review and a new apply request file. Existing exports are never replac
 
 The compiled catalog smoke exercises live import/patch, complete validation,
 review/apply, retries, canonical export round trip and rollback without Node/Bun
-on PATH. Task operations and the complete system runtime remain later work.
+on PATH. Dispatch and the complete system runtime remain later work.
 
 ## Receive a message
 
@@ -148,8 +149,8 @@ instruction after interruption; it reuses the artifact and does not repeat recei
 effects. Failed or revoked receives print no message body, artifact path or ticket.
 
 The current Phase 04 backend supports live-session assignment, submission and failure-report receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
-dispatch, lifecycle commands and automatic worker launch are not available yet.
-The API uses endpoint protocol 6; immutable stored message envelopes retain revision 4.
+dispatch, parent decisions and automatic worker launch are not available yet.
+The API uses endpoint protocol 7; immutable stored message envelopes retain revision 4.
 
 `scripts/receive-smoke.ts` compiles to a standalone smoke covering local publication
 and simulated transport interruptions. Private deployment tooling additionally
@@ -174,3 +175,26 @@ Reads return `mode: "history"`, the envelope and private artifact path. They exp
 no current task/delivery status and do not reset retention or receipt clocks. The
 current session path covers direct participant grants; ancestor and packet access
 are still being implemented. Historical ticket confirmation is separate work.
+
+## Submit a worker report
+
+```bash
+herdr-cli submit --assignment <assignment-message-id> --input report.json --request-file /secure/report-request.json
+herdr-cli report-failure --assignment <assignment-message-id> --input failure.json --request-file /secure/failure-request.json
+```
+
+Use the immutable assignment/revision message identity returned by receive. The
+input is UTF-8 JSON containing `values` and `bundleValues`, with optional
+`attributes`; populate the slots required by that assignment's frozen reply
+contract. Duplicate keys and invalid contracts reject. Caller discovery is internal.
+
+Keep the request file and retry the same command after interruption. This private
+journal stores a request identity and input digest, without report bodies or tickets.
+Changing input or caller while reusing it rejects. Use a fresh request-file path
+for an intentional new report, including one with identical content. Successful
+output identifies the accepted report; lost responses recover that same result.
+
+Current received-assignment reports pause execution for parent review. Failure
+reports also require the parent's decision; neither command closes the task or
+releases its session. Historical reports retain their actual assignment provenance.
+Parent feedback and closure commands remain in implementation.
