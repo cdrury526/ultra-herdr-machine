@@ -55,3 +55,10 @@ The compiled credential smoke is `python3 scripts/credential-smoke.py OPERATOR_P
 It uses the local development API port, creates/revokes a fixture machine, checks
 concurrent registration and recovery without Node, and deletes successful local fixtures.
 It does not establish expired-token/rotation acceptance or caller/session binding.
+
+`python3 scripts/credential-interruption-smoke.py OPERATOR_PROFILE` checks Linux
+process-death recovery before and after atomic credential publication. It builds a
+test-only C interposer (`cc` required), stops only its own compiled CLI child, kills
+that child and retries with the original request or saved profile. It verifies the
+actual lock's close-on-exec flag, same-machine recovery and pending-save acknowledgement.
+The interposer is not included in the product binary. Fixture machines are revoked.
