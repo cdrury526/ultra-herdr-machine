@@ -147,7 +147,7 @@ verified envelope, artifact path and original receipt identity. Retry the same
 instruction after interruption; it reuses the artifact and does not repeat receipt
 effects. Failed or revoked receives print no message body, artifact path or ticket.
 
-The current Phase 04 backend supports live-session assignment receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
+The current Phase 04 backend supports live-session assignment, submission and failure-report receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
 dispatch, lifecycle commands and automatic worker launch are not available yet.
 The API uses endpoint protocol 6; immutable stored message envelopes retain revision 4.
 
