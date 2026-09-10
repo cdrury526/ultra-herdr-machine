@@ -1,6 +1,6 @@
 {
   "name": "ultra-herdr-machine",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.2",
@@ -13,12 +13,13 @@
     "smoke:ink": "bun build scripts/ink-smoke.tsx --compile --outfile dist/ink-smoke && ./dist/ink-smoke"
   },
   "dependencies": {
-    "@ultra-herdr/api": "file:vendor/ultra-herdr-api-0.3.0-54b2b4b1.tgz",
+    "@ultra-herdr/api": "file:vendor/ultra-herdr-api-0.4.0-d5ab372e.tgz",
     "commander": "15.0.0",
     "convex": "1.45.0",
     "ink": "7.1.1",
     "react": "19.2.8",
-    "zod": "4.5.4"
+    "zod": "4.5.4",
+    "canonicalize": "5.0.0"
   },
   "devDependencies": {
     "@types/node": "24.0.0",

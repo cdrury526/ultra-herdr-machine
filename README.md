@@ -77,7 +77,57 @@ It requires a ready enrolled verifier; credential registration alone does not ma
 that verifier available. Complete runtime installation and real harness acceptance
 are still in progress. The task CLI does not connect to Herdr or choose panes.
 
-This build consumes public API 0.3.0 / protocol 3. It includes generated context
+This build consumes public API 0.4.0 / protocol 4. It includes generated context
 references and response validators. The compiled caller smoke was exercised against
 a live backend with modeled terminal observations; that is not actual harness
 launch or system-pane acceptance.
+
+## Operator catalog workflow
+
+Catalog commands use an explicitly selected protected operator profile with
+`catalog.manage`. They call Convex; they do not require caller-pane discovery or
+perform Herdr I/O. Imports remain inactive until complete validation and explicit
+review/apply. For example:
+
+```sh
+herdr-cli catalog import --profile /secure/operator.json --file catalog.jsonl \
+  --mode replace --note "Initial catalog" --request /secure/import.request > release.json
+herdr-cli catalog validate --profile /secure/operator.json --release release.json
+herdr-cli catalog review --profile /secure/operator.json --release release.json \
+  --brief submission --sample sample.json --note "Reviewed catalog" \
+  --request /secure/review.request > review.json
+herdr-cli catalog diff --profile /secure/operator.json --review REVIEW_ID --page 0
+herdr-cli catalog apply --profile /secure/operator.json --review review.json \
+  --request /secure/apply.request
+herdr-cli catalog export --profile /secure/operator.json --release release.json \
+  --output backup.jsonl
+```
+
+Use actual brief keys from `catalog entries`; the example's `submission` is an
+operator-authored catalog key. A sample contains `values`, `bundleValues` keyed by
+exact `key@revision`, and `context` with `recipientRole` plus any supported matching
+context. `catalog preview` renders without preparing an activation; `catalog explain`
+pages its immutable reasons. `catalog list`, `head`, `show`, and `history` inspect
+stored releases and activations. `diff` reports its page count; read every page.
+
+Files use UTF-8 JSONL: first line `{"format":"herdr-catalog-file-1"}`, then one
+`{"kind":"schema","key":"example","body":{...}}` record per line, sorted by kind
+then key. Exports add manifest metadata to the header and exact `revision` and
+`bodyDigest` assertions to records. Bodies contain exact numeric references; when
+authored content changes, update its dependent references and any revision/digest
+assertions before importing. The backend never overwrites immutable revisions.
+
+`--mode patch` accepts explicit records with `operation: "upsert"` or `"remove"`;
+remove records contain only operation, kind and key. Omitted entries remain in the
+expected base. Replacement omission removes entries. Inputs stream in bounded
+batches; duplicate JSON keys and invalid contracts reject in Convex.
+
+Keep each request file and reuse the same command/input to resume interrupted work.
+The file binds content, operator, deployment and expected head. A changed base
+requires a new review and request; nothing silently rebases. For rollback, review
+the entire prior release against the current head, then use `catalog rollback`
+with that review and a new apply request file. Existing exports are never replaced.
+
+The compiled catalog smoke exercises live import/patch, complete validation,
+review/apply, retries, canonical export round trip and rollback without Node/Bun
+on PATH. Task operations and the complete system runtime remain later work.

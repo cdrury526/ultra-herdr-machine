@@ -1,3 +1,5 @@
+import { addCatalogCommands } from "./catalog";
+import { CatalogError } from "../catalog/client";
 import { Command } from "commander";
 import { PROTOCOL_VERSION } from "@ultra-herdr/api";
 import { addContextCommands } from "./context";
@@ -12,15 +14,16 @@ const program = new Command()
   .showHelpAfterError();
 
 addAuthCommands(program);
+addCatalogCommands(program);
 addContextCommands(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();
 } catch (error) {
   // Avoid backend exception bodies, validator inputs and tokens in CLI diagnostics.
-  const message = error instanceof ContextError ? `${error.code}: ${error.message}`
+  const message = error instanceof CatalogError ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
     : error instanceof Error && error.constructor === Error ? error.message
-    : "Credential operation failed. Check protected inputs and current authorization.";
+    : "Operation failed. Check command inputs and current authorization.";
   console.error(message);
   process.exitCode = 1;
 }
