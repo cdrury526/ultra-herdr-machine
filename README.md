@@ -148,7 +148,7 @@ verified envelope, artifact path and original receipt identity. Retry the same
 instruction after interruption; it reuses the artifact and does not repeat receipt
 effects. Failed or revoked receives print no message body, artifact path or ticket.
 
-The current Phase 04 backend supports live-session assignment, submission, failure-report and current review-feedback receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
+The current Phase 04 backend supports live-session assignment, submission, failure-report, current review-feedback and completion-notice receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
 dispatch, parent decisions and automatic worker launch are not available yet.
 The API uses endpoint protocol 7; immutable stored message envelopes retain revision 4.
 
@@ -200,3 +200,9 @@ releases its session. Historical reports retain their actual assignment provenan
 The backend applies feedback on receipt against the still-current review, resuming
 only the remaining budget when no stop or exhaustion blocks it. The parent feedback
 and closure command surface remains in implementation.
+
+A completion notice reports an already accepted parent decision. Receiving it never
+closes a task again or alters a newer task using the retained session. Backend
+parent completion now validates the current reviewed submission and child-task
+ordering, records evidence and frees the task slot while retaining the session.
+The public parent command surface and subtree failure handling remain in progress.
