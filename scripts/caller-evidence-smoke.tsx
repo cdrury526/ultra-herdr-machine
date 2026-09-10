@@ -1,3 +1,4 @@
+import { launchEnvironment } from "../src/context/launch";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { collectCallerEvidence, MAX_PROCESS_IDENTITIES, MAX_EVIDENCE_BYTES } from "../src/context/evidence";
@@ -26,4 +27,7 @@ process.env.ULTRA_HERDR_LAUNCH_CONTEXT = 'fixture-launch-context';
 assert.equal(collectCallerEvidence().launchContextId, 'fixture-launch-context');
 process.env.ULTRA_HERDR_LAUNCH_CONTEXT = ' '.repeat(129);
 assert.throws(collectCallerEvidence, (error: unknown) => error instanceof ContextError && error.code === 'UNSUPPORTED_CONTEXT');
+assert.deepEqual(launchEnvironment('launch-a'), { ULTRA_HERDR_LAUNCH_CONTEXT: 'launch-a' });
+assert.notDeepEqual(launchEnvironment('launch-a'), launchEnvironment('launch-b'));
+assert.throws(() => launchEnvironment('bad context'), ContextError);
 console.log('Caller evidence smoke passed: bounded live ancestry, PID/start/namespace checks, process death, explicit context and malformed-context rejection. No session binding is claimed.');

@@ -2,8 +2,9 @@
 
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
-and a renewal path. Complete enrollment/system installation, verified caller identity,
-task operations and the visible runtime are not yet available.
+and a renewal path. `whoami` resolves the caller through authenticated backend
+verification. Complete enrollment/system installation, task operations and the
+visible runtime are not yet available.
 
 Requires Bun 1.4.2 to build. Installed compiled binaries do not require Node.
 
@@ -62,3 +63,21 @@ test-only C interposer (`cc` required), stops only its own compiled CLI child, k
 that child and retries with the original request or saved profile. It verifies the
 actual lock's close-on-exec flag, same-machine recovery and pending-save acknowledgement.
 The interposer is not included in the product binary. Fixture machines are revoked.
+
+Caller identity uses the machine configuration (default
+`~/.config/ultra-herdr/machine.json`):
+
+```sh
+herdr-cli whoami --config /secure/machine.json
+```
+
+It returns a verified product session as JSON, waits internally for pending
+verification, and fails with a typed setup/retry hint if context is unavailable.
+It requires a ready enrolled verifier; credential registration alone does not make
+that verifier available. Complete runtime installation and real harness acceptance
+are still in progress. The task CLI does not connect to Herdr or choose panes.
+
+This build consumes public API 0.3.0 / protocol 3. It includes generated context
+references and response validators. The compiled caller smoke was exercised against
+a live backend with modeled terminal observations; that is not actual harness
+launch or system-pane acceptance.

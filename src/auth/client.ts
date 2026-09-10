@@ -20,8 +20,8 @@ export function secureUrl(value: string) {
   }
   return url.toString();
 }
-export function clientFor(profile: Profile) {
-  const client = new ConvexHttpClient(secureUrl(profile.convexUrl), { logger: false });
+export function clientFor(profile: Profile, fetchOverride?: typeof globalThis.fetch) {
+  const client = new ConvexHttpClient(secureUrl(profile.convexUrl), { logger: false, ...(fetchOverride ? { fetch: fetchOverride } : {}) });
   client.setAuth(profile.token);
   return client;
 }
