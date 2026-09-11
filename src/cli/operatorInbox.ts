@@ -6,7 +6,7 @@ export function addOperatorInboxCommands(operator: Command) {
     .option("--cursor <cursor>", "Continue a previous page")
     .option("--limit <count>", "Page size up to the deployment bound")
     .action(async options => console.log(JSON.stringify(await readOperatorInbox(options))));
-  operator.command("receive").description("Verify an execution budget escalation, save it privately and confirm receipt")
+  operator.command("receive").description("Verify an addressed escalation, save it privately and confirm receipt")
     .requiredOption("--profile <file>", "Protected operator profile")
     .option("--ticket <ticket>", "Opaque message ticket")
     .option("--delivery <reference>", "Delivery reference from operator inbox")
