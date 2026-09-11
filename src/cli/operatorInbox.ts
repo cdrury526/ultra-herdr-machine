@@ -6,7 +6,7 @@ export function addOperatorInboxCommands(operator: Command) {
     .option("--cursor <cursor>", "Continue a previous page")
     .option("--limit <count>", "Page size up to the deployment bound")
     .action(async options => console.log(JSON.stringify(await readOperatorInbox(options))));
-  operator.command("escalations").description("List pending and unresolved review escalations, including received messages")
+  operator.command("escalations").description("List pending and unresolved review and reply escalations, including received messages")
     .requiredOption("--profile <file>", "Protected operator profile")
     .option("--cursor <cursor>", "Continue a previous page")
     .option("--limit <count>", "Page size up to the deployment bound")

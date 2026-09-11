@@ -471,9 +471,11 @@ start its clocks, or grant general task history. Receive the escalation first.
 Task/session identity references do not grant current-state access; this command
 retrieves message/submission bodies only. Other packet kinds remain unsupported.
 
-`operator escalations` lists one page of awaiting, unresolved, or blocked review
+`operator escalations` lists one page of awaiting, unresolved, or blocked review and reply
 escalations addressed to the selected operator, including messages already received.
 Receipt does not reset the response window. Resolved or superseded reviews disappear
 from this view while their accepted message receipts remain available. Follow a
 non-null `cursor` with `--cursor`, even after an empty page. If the listing changes,
-restart without a cursor. This metadata view grants no task-control authority.
+restart without a cursor. Review items precede reply items; an empty review page
+can have a continuation to the reply page. A final answer removes its reply item;
+task completion alone does not. This metadata view grants no task-control authority.
