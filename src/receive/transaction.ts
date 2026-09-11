@@ -5,8 +5,10 @@ import { verifyEnvelope, messageArtifactId } from "@ultra-herdr/api";
 import { saveArtifact, ReceiveError } from "./artifact";
 const identity = z.string().min(1).max(256), positive = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
+const sourcePacket = z.object({ canonical: z.string().max(1048576), messageId: identity, artifactId: hash, digest: hash, byteLength: positive }).strict();
+const pending = z.object({ state: z.literal("preparing"), transferId: identity }).strict();
 const common = { deploymentId: identity, deliveryId: identity, generation: positive, messageId: identity,
-  canonical: z.string().max(1048576), artifactId: hash, digest: hash, byteLength: positive, alreadyReceived: z.boolean() };
+  canonical: z.string().max(1048576), artifactId: hash, digest: hash, byteLength: positive, alreadyReceived: z.boolean(), source: sourcePacket.optional() };
 const exchange = z.object({ ...common, bindingEpoch: positive }).strict();
 const operatorExchange = z.object({ ...common, operatorId: identity }).strict();
 const receipt = z.object({ receiptId: identity, artifactId: hash,
@@ -22,11 +24,24 @@ async function artifact(value: z.infer<typeof exchange> | z.infer<typeof operato
   if (envelope.messageId !== value.messageId || envelope.digest !== value.digest || envelope.byteLength !== value.byteLength ||
       envelope.recipient.kind !== recipient.kind || envelope.recipient.id !== recipient.id ||
       await messageArtifactId(value.deploymentId, envelope) !== value.artifactId) throw new ReceiveError();
-  return { path: await saveArtifact(directory, value.deploymentId, value.artifactId, envelope), envelope };
+  let sourcePath: string | undefined;
+  const transferred = envelope.kind === "notice" && (envelope.payload as { type: string }).type === "obligation_transferred";
+  if (transferred !== Boolean(value.source)) throw new ReceiveError();
+  if (value.source) {
+    const source = await verifyEnvelope(value.source.canonical);
+    const ref = (envelope.payload as { sourceRef: { id: string; digest: string } }).sourceRef;
+    if (source.messageId !== ref.id || source.digest !== ref.digest || source.taskId !== envelope.taskId ||
+        source.messageId !== value.source.messageId || source.digest !== value.source.digest || source.byteLength !== value.source.byteLength ||
+        await messageArtifactId(value.deploymentId, source) !== value.source.artifactId) throw new ReceiveError();
+    sourcePath = await saveArtifact(directory, value.deploymentId, value.source.artifactId, source);
+  }
+  return { path: await saveArtifact(directory, value.deploymentId, value.artifactId, envelope), envelope, ...(sourcePath ? { sourcePath } : {}) };
 }
 async function finish<T extends ConfirmationBase>(domain: string, input: Omit<T, "requestId">, confirm: (input: T) => Promise<unknown>) {
   const requestId = createHash("sha256").update(canonicalize([domain, 1, input])!).digest("hex");
-  const confirmed = receipt.parse(await confirm({ ...input, requestId } as T));
+  let result: unknown;
+  do { result = await confirm({ ...input, requestId } as T); } while (pending.safeParse(result).success);
+  const confirmed = receipt.parse(result);
   if (confirmed.artifactId !== input.artifactId) throw new ReceiveError();
   return confirmed;
 }

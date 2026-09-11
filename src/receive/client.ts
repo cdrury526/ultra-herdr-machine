@@ -11,11 +11,8 @@ async function receive(configPath: string, input: string | { deliveryId: string;
     const config = resolve(configPath), profile = await loadProfile(config, "machine");
     const caller = await resolveCaller(config);
     if (caller.machineId !== profile.machineId) throw new ReceiveError();
-    const deadline = performance.now() + 20_000;
     const client = clientFor(profile, (input, init) => {
-      const remaining = deadline - performance.now();
-      if (remaining <= 0) throw new ReceiveError();
-      return fetch(input, { ...init, redirect: "error", signal: AbortSignal.timeout(Math.ceil(remaining)) });
+      return fetch(input, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) });
     });
     const ticket = typeof input === "string" ? input : receiveResultSchemas.resolve.parse(await client.query(receiveApi.resolve, {
       verificationId: caller.verificationRequestId, ...input })).ticket;
@@ -23,7 +20,12 @@ async function receive(configPath: string, input: string | { deliveryId: string;
     const authority = { verificationId: caller.verificationRequestId, ticket };
     return await receiveMessage({
       exchange: async () => receiveResultSchemas.exchange.parse(await client.query(receiveApi.exchange, authority)),
-      confirm: async confirmation => receiveResultSchemas.confirm.parse(await client.mutation(receiveApi.confirm, { ...authority, confirmation })),
+      confirm: async confirmation => {
+        const freshProfile = await loadProfile(config, "machine"), fresh = await resolveCaller(config);
+        if (freshProfile.convexUrl !== profile.convexUrl || freshProfile.machineId !== profile.machineId || fresh.machineId !== profile.machineId || fresh.sessionId !== caller.sessionId || fresh.bindingEpoch !== caller.bindingEpoch) throw new ReceiveError();
+        return receiveResultSchemas.confirm.parse(await clientFor(freshProfile, (input, init) => fetch(input, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) })).mutation(receiveApi.confirm,
+          { ticket, verificationId: fresh.verificationRequestId, confirmation }));
+      },
     }, `${config}.messages`, caller);
   } catch { throw new ReceiveError(); }
 }

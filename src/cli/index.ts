@@ -1,3 +1,4 @@
+import { addOwnershipCommands } from "./ownership";
 import { addReleaseCommands } from "./release";
 import { ReleaseError } from "../release/client";
 import { addConversationCommands } from "./conversation";
@@ -38,6 +39,7 @@ addReportCommands(program);
 addFailureCommands(program);
 addReviewCommands(program);
 addReleaseCommands(program);
+addOwnershipCommands(program);
 addConversationCommands(program);
 program.action(() => program.help());
 try {

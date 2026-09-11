@@ -538,3 +538,18 @@ a fresh one. Accepted review and decision records remain protected.
 `--operator-profile PROFILE` and that operator's own completed review.
 A `closing` result is a durable close intent. Actual machine pane closure and its
 confirmation are Phase 05 work; no physical closure is performed by this CLI.
+
+Ownership offers and explicit takeover are available through `handoff`, `takeover`,
+`operator-handoff`, and `operator-takeover` (API/CLI 0.28.0). Each takes a typed
+`--input` file and a separate protected `--request-file`; reuse that journal for
+retries of the same intent. Handoff publication leaves the current owner responsible;
+control changes only after the recipient confirms receipt. Takeover continues bounded
+preparation internally and requires backend-verified eligibility. Operator commands
+require an explicit profile with `tasks.takeover` and `inbox.review`.
+
+Receive internally completes pending handoff preparation before returning the receipt.
+Transferred obligation notices include a verified original-content artifact as
+`sourcePath`; existing response deadlines remain backend-owned. These paths have
+backend domain and local client checks; compiled live ownership acceptance, operator
+response actions and replacement are still under implementation. This does not
+establish actual worker launch or dispatch.

@@ -53,6 +53,34 @@ try {
     await reject(() => receiveMessage({ ...transport, exchange: async () => ({ ...value, ...patch }) }, directory, caller));
   await reject(() => receiveMessage(transport, directory, { ...caller, sessionId: "other" }));
   equal(requests.length, count);
+  const pendingRequests: Confirmation[] = [];
+  await receiveMessage({ exchange: async () => value, confirm: async input => {
+    pendingRequests.push(input);
+    return pendingRequests.length < 4 ? { state: "preparing", transferId: "transfer" }
+      : { receiptId: "receipt", artifactId, receivedAt: 2000 };
+  } }, directory, caller);
+  equal(pendingRequests.length, 4);
+  equal(new Set(pendingRequests.map(x => x.requestId)).size, 1);
+  const { digest: _digest, byteLength: _length, ...original } = envelope;
+  const notice = await sealEnvelope({ ...original, messageId: "transfer-notice", kind: "notice", context: { causeEventId: "transfer-event" },
+    payload: { type: "obligation_transferred", sourceRef: { id: envelope.messageId, digest: envelope.digest } } });
+  const noticeArtifact = await messageArtifactId("deployment", notice);
+  const transferValue = { ...value, messageId: notice.messageId, canonical: JSON.stringify(notice),
+    artifactId: noticeArtifact, digest: notice.digest, byteLength: notice.byteLength,
+    source: { messageId: envelope.messageId, canonical: value.canonical, artifactId, digest: envelope.digest, byteLength: envelope.byteLength } };
+  let transferConfirms = 0;
+  const transferTransport = { exchange: async () => transferValue, confirm: async () => {
+    transferConfirms++; return { receiptId: "transfer-receipt", artifactId: noticeArtifact, receivedAt: 3000 };
+  } };
+  const receivedTransfer = await receiveMessage(transferTransport, directory, caller);
+  equal(receivedTransfer.sourcePath, first.path);
+  equal(statSync(receivedTransfer.sourcePath!).mode & 0o777, 0o600);
+  for (const patch of [{ source: undefined }, { source: { ...transferValue.source, digest: "a".repeat(64) } },
+    { source: { ...transferValue.source, messageId: "unrelated" } }])
+    await reject(() => receiveMessage({ ...transferTransport, exchange: async () => ({ ...transferValue, ...patch }) }, directory, caller));
+  equal(transferConfirms, 1);
+  await reject(() => receiveMessage({ ...transport, exchange: async () => ({ ...value, source: transferValue.source }) }, directory, caller));
+  rmSync(receivedTransfer.path);
   const file = first.path;
   writeFileSync(file, "corrupt"); await reject(() => receiveMessage(transport, directory, caller)); equal(readFileSync(file, "utf8"), "corrupt");
   rmSync(file); symlinkSync(join(root, "absent"), file);

@@ -39,7 +39,11 @@ export async function receiveOperator(profilePath: string, input: string | { del
     if (!/^ht1\.[A-Za-z0-9_-]{1,32}\.[A-Za-z0-9_-]{43}$/.test(ticket)) throw new ReceiveError();
     return await receiveOperatorMessage({
       exchange: async () => receiveResultSchemas.operatorExchange.parse(await client.query(receiveApi.operatorExchange, { ticket })),
-      confirm: async confirmation => receiveResultSchemas.operatorConfirm.parse(await client.mutation(receiveApi.operatorConfirm, { ticket, confirmation })),
+      confirm: async confirmation => {
+        const fresh = await selected(profilePath);
+        if (fresh.profile.principalId !== profile.principalId || fresh.profile.convexUrl !== profile.convexUrl) throw new ReceiveError();
+        return receiveResultSchemas.operatorConfirm.parse(await fresh.client.mutation(receiveApi.operatorConfirm, { ticket, confirmation }));
+      },
     }, `${config}.messages`, profile.principalId);
   } catch { throw new ReceiveError(); }
 }
