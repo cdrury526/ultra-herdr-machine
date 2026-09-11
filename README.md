@@ -737,3 +737,11 @@ Unknown files, symlinks, malformed envelopes and credentials are excluded. Local
 cleanup changes no cloud content or receipt facts. Retained cloud content can be
 retrieved again; new receives may save fresh artifacts after cleanup.
 API/CLI 0.35.0 adds this explicit local cleanup flow.
+
+
+Obligation and delivery citations identify their immutable source message. Use an
+obligation ID or a native/logical delivery ID in `{kind,id,digest?}`; an optional
+digest must match that message. Normal source-content authority or an explicit
+ancestor/received-source packet proof is required. The envelope keeps the typed
+reference while retention protects its source message. Citing it grants no current
+reply or delivery status. Standalone typed-reference retrieval remains pending.
