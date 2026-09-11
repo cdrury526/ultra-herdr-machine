@@ -604,3 +604,9 @@ selects the recipient and enforces the original request's shared cooldown. Recei
 is informational and preserves response clocks. Reuse the protected journal for an
 unchanged retry. Domain acceptance uses modeled callers; compiled real-JWT acceptance
 of this command remains pending.
+
+API/CLI 0.33.0 validates optional replacement context in assignment envelopes:
+`taskId`, `assignmentRevision`, `historyThroughSequence`, and
+`sourceInstructions: "superseded"`. These identify retained prior-task history;
+the new assignment supplies the governing instructions. Public replacement/dispatch
+commands still await their orchestration integration.
