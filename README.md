@@ -3,8 +3,8 @@
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
-verification. Message receipt, retained history and typed worker reports are available. Complete
-enrollment/system installation, dispatch, parent decisions and the visible runtime
+verification. Message receipt, retained history, typed worker reports and parent failure requests are available. Complete
+enrollment/system installation, dispatch, other parent decisions and the visible runtime
 are not yet available.
 
 Requires Bun 1.4.2 to build. Installed compiled binaries do not require Node.
@@ -230,3 +230,27 @@ to resolve its protected ticket internally, then performs the same verified
 artifact/confirmation sequence as `receive --ticket`. The modes are mutually
 exclusive. Receive rechecks current grants, generation, binding and task state;
 a stale inbox entry cannot authorize an action.
+
+Parent-owned failure uses the current task owner epoch and assignment revision:
+
+```sh
+herdr-cli fail --task TASK_ID --owner-epoch 1 --revision 1 \
+  --input /secure/failure-briefs.json --request-file /secure/failure-request.json
+herdr-cli failure-status --request-file /secure/failure-request.json
+```
+
+The input contains `root` and `descendants`. Each selects `noticeBriefKey` and
+`stopBriefKey`, with `noticeValues`, `stopValues`, `noticeBundleValues` and
+`stopBundleValues` (and optional `attributes`). These must satisfy the task's pinned
+brief contracts. The backend validates every generated descendant message before
+accepting the failure; panes remain retained. Workers use `report-failure` to ask
+the parent for disposition.
+
+`fail` returns a request state. `preparing` means work is pending; only `accepted`
+contains the committed decision. Preparation continues in the backend after the
+CLI exits. `failure-status` is read-only. If state is `awaiting_authorization`, rerun
+`fail` with the original input and request file to provide fresh authority. For
+`rejected`, inspect the reported field error and correct the input as a new intent
+with a new request file. Reusing an existing journal with changed task, epochs,
+briefs, deployment or caller is rejected. The owner-only journal contains identity
+and a digest, never bodies, tickets or credentials; retain it across lost responses.

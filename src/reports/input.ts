@@ -35,6 +35,7 @@ export function reportFailure(error: unknown): ReportError {
     const detail = typeof issue?.code === "string" && /^[A-Z_]{1,64}$/.test(issue.code) ? `/${issue.code}` : "";
     // User-authored property names may contain content. Expose only known structural field names.
     const fields = new Set(["values", "bundleValues", "attributes", "payload", "evidence", "summary", "references",
+      "root", "descendants", "noticeBriefKey", "stopBriefKey", "noticeValues", "stopValues", "noticeBundleValues", "stopBundleValues",
       "criterionResults", "criterion", "outcome", "explanation", "notes", "reason", "blockedOn", "assignmentMessageId", "requestId", "kind"]);
     const parts = typeof issue?.path === "string" ? issue.path.split("/").slice(1, 10) : [];
     const safe: string[] = [];
