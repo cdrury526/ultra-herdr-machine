@@ -6,8 +6,10 @@ export { HistoryError } from "./client";
 export interface HistoryOptions extends HistoryScopeOptions { message: string; digest?: string; packet?: string }
 export async function readMessageHistory(options: HistoryOptions) {
   try {
+    if (options.packet !== undefined && options.ancestryCheck !== undefined) throw new HistoryError();
     const { client, actor, config } = await historyConnection(options);
     const input = { actor, taskId: options.task, messageId: options.message,
+      ...(options.ancestryCheck === undefined ? {} : { ancestryCheckId: options.ancestryCheck }),
       ...(options.digest !== undefined ? { digest: options.digest } : {}) };
     const value = options.packet === undefined
       ? historyResultSchemas.message.parse(await client.query(historyApi.message, input))

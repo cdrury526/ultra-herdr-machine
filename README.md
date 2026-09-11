@@ -216,6 +216,18 @@ sequence order. Pass the returned cursor with `--cursor` for the next page, or u
 `--limit` to request a smaller page. The same live-session, released-session and
 operator profile modes as `history message` apply. Listing creates no artifact or
 receipt. Use `history message --task <id> --message <id>` to verify a listed body.
+
+Current ancestor managers can investigate a specific descendant using
+`history authority --task <id> --request-file /secure/history-authority.json`.
+Repeat with the same journal if the returned state is `searching`. Once `verified`,
+pass its `checkId` as `--ancestry-check <id>` to `history list` or `history message`
+for that task. Every read/page rechecks current ancestor ownership. A stale proof
+fails even when a separate direct history grant exists; omit the proof to use that
+grant and its cutoff. Proofs are live-session-only and cannot be combined with
+packet, released-session or operator modes. They confer no task control or receipt
+effects. Use `history authority-discard --check <id>` after investigation to discard
+unused proof material (proofs referenced by accepted control operations are retained).
+
 If the server rejects a stale cursor, restart without it. A listing's first page
 fixes its upper sequence boundary; start a new listing to include later messages.
 

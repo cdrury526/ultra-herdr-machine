@@ -5,10 +5,11 @@ import { resolveCaller } from "../context/resolve";
 export class HistoryError extends Error {
   constructor() { super("History read failed. Check the selected profile, task/message scope and current content permission. No content was returned."); }
 }
-export interface HistoryScopeOptions { config: string; task: string; releasedSession?: string; operatorProfile?: string }
+export interface HistoryScopeOptions { config: string; task: string; releasedSession?: string; operatorProfile?: string; ancestryCheck?: string }
 /** Explicit authority selection shared by history operations. No fallback from a failed live binding. */
 export async function historyConnection(options: HistoryScopeOptions) {
-  if (options.operatorProfile && options.releasedSession) throw new HistoryError();
+  if ((options.operatorProfile && options.releasedSession) ||
+      (options.ancestryCheck !== undefined && (!options.ancestryCheck || options.operatorProfile || options.releasedSession))) throw new HistoryError();
   const config = resolve(options.operatorProfile ?? options.config);
   const profile = options.operatorProfile ? await loadProfile(config, "operator") : await loadProfile(config, "machine");
   const actor = options.operatorProfile ? { kind: "operator" as const } : options.releasedSession

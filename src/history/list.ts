@@ -8,6 +8,7 @@ export async function listMessageHistory(options: HistoryListOptions) {
     if (options.limit !== undefined && !/^[1-9][0-9]*$/.test(options.limit)) throw new HistoryError();
     const { client, actor } = await historyConnection(options);
     return historyResultSchemas.list.parse(await client.query(historyApi.list, { actor, taskId: options.task,
+      ...(options.ancestryCheck === undefined ? {} : { ancestryCheckId: options.ancestryCheck }),
       ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
       ...(options.limit === undefined ? {} : { limit: Number(options.limit) }) }));
   } catch (error) {
