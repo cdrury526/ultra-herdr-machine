@@ -173,8 +173,8 @@ optionally asserts the exact expected SHA-256 content identity.
 
 Reads return `mode: "history"`, the envelope and private artifact path. They expose
 no current task/delivery status and do not reset retention or receipt clocks. The
-current session path covers direct participant grants; scoped ancestor and packet access
-are still being implemented. Historical ticket confirmation is separate work.
+current session path supports direct grants, explicit ancestor proofs and received
+packet references as described below. These reads do not confirm tickets.
 
 ## Submit a worker report
 
@@ -337,8 +337,9 @@ conflicts with that journal.
 Use `ask --input question.json --request-file question-request.json` to send a
 question to an authorized participant in the task. Questions can refer to completed
 tasks and do not pause, restart, or reopen execution. The initial interface supports
-direct task participants; ancestor/packet and transferred response authority remain
-in development. Include `--config` when using a nondefault machine profile.
+direct task participants, including transferred reply authority. Ancestor-authored
+questions and reuse of packet-only source references remain in development. Include
+`--config` when using a nondefault machine profile.
 
 Question input contains `taskId`, `recipientSessionId`, `briefKey`, `values`,
 `bundleValues`, and optional `attributes`. For the initial `question` brief,
