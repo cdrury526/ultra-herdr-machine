@@ -10,13 +10,16 @@ const reportScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.stri
 const failureScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("parent_failure"), taskId: z.string(), ownerEpoch: z.number().int().positive(), revision: z.number().int().positive(),
   inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
-const scopeShape = z.union([reportScopeShape, failureScopeShape]);
+const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
+  kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape]);
 const journalShape = z.object({ version: z.literal(1), requestId: z.string().uuid(), scope: scopeShape }).strict();
 export type ReportScope = z.infer<typeof reportScopeShape>;
+export type ReviewScope = z.infer<typeof reviewScopeShape>;
 export type FailureScope = z.infer<typeof failureScopeShape>;
 
 /** A fresh journal is a new intent; identical retries reuse its UUID across process loss. No bodies or tickets are stored. */
-export async function reportRequest(path: string, scope: ReportScope | FailureScope) {
+export async function reportRequest(path: string, scope: ReportScope | FailureScope | ReviewScope) {
   return withCredentialLock(path, async lockedPath => {
     let exists = true;
     try { lstatSync(lockedPath); } catch (error) {

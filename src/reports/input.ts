@@ -36,7 +36,8 @@ export function reportFailure(error: unknown): ReportError {
     // User-authored property names may contain content. Expose only known structural field names.
     const fields = new Set(["values", "bundleValues", "attributes", "payload", "evidence", "summary", "references",
       "root", "descendants", "noticeBriefKey", "stopBriefKey", "noticeValues", "stopValues", "noticeBundleValues", "stopBundleValues",
-      "criterionResults", "criterion", "outcome", "explanation", "notes", "reason", "blockedOn", "assignmentMessageId", "requestId", "kind"]);
+      "taskId", "submissionId", "expectedOwnerEpoch", "expectedRevision", "reviewId", "reviewGeneration", "briefKey", "failedChildren",
+      "feedback", "corrections", "criterionResults", "criterion", "outcome", "explanation", "notes", "reason", "blockedOn", "assignmentMessageId", "requestId", "kind"]);
     const parts = typeof issue?.path === "string" ? issue.path.split("/").slice(1, 10) : [];
     const safe: string[] = [];
     for (const part of parts) { if (!fields.has(part) && !/^\d{1,6}$/.test(part)) break; safe.push(part); }

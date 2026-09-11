@@ -3,7 +3,7 @@
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
-verification. Message receipt, retained history, typed worker reports and parent failure requests are available. Complete
+verification. Message receipt, retained history, typed worker reports and parent completion, feedback and failure are available. Complete
 enrollment/system installation, dispatch, other parent decisions and the visible runtime
 are not yet available.
 
@@ -254,3 +254,33 @@ CLI exits. `failure-status` is read-only. If state is `awaiting_authorization`, 
 with a new request file. Reusing an existing journal with changed task, epochs,
 briefs, deployment or caller is rejected. The owner-only journal contains identity
 and a digest, never bodies, tickets or credentials; retain it across lost responses.
+
+Parent review commands use the task's current review and pinned brief contracts:
+
+```sh
+herdr-cli review-state --task TASK_ID
+herdr-cli feedback --input /secure/feedback.json --request-file /secure/feedback-request.json
+herdr-cli complete --input /secure/completion.json --request-file /secure/completion-request.json
+```
+
+`review-state` returns owner epoch, assignment revision, received revision, current
+review ID/generation and submission identity, or the committed terminal decision.
+It is owner-only, read-only metadata. Retrieve submission content through the normal
+receive/history path. State is a snapshot: accepting commands recheck expectations.
+
+Both input files contain `taskId`, `submissionId`, `expectedOwnerEpoch`,
+`expectedRevision`, `briefKey`, `values`, `bundleValues` and optional `attributes`.
+Feedback additionally contains `reviewId` and `reviewGeneration`; select the pinned
+review-feedback brief and identify the same submission in its payload. Completion
+additionally contains `failedChildren` (an empty array when none), accounting for
+each failed child's task and decision identity with task references in the evidence.
+Completion notice type/outcome/decision identity are backend-generated; do not
+supply them in payload slots. Omit `requestId`: the CLI saves it before sending.
+
+Feedback requests corrections under the same assignment contract. Accepting feedback
+does not resume work; receipt of current feedback does. Completion requires the
+latest received revision, current submission and no unfinished children. It releases
+the task reservation while retaining the worker session and pane. A changed review,
+owner, revision or submission rejects. Unchanged retries recover the same accepted
+message after a lost response; changed input or a different operation requires a new
+journal. Journals and parent-command diagnostics contain no message bodies or secrets.

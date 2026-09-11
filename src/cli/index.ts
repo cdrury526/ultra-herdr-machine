@@ -1,3 +1,5 @@
+import { addReviewCommands } from "./review";
+import { ReviewError } from "../review/client";
 import { addFailureCommands } from "./failure";
 import { FailureError } from "../failure/client";
 import { addInboxCommand } from "./inbox";
@@ -18,7 +20,7 @@ import metadata from "../../package.json";
 
 const program = new Command()
   .name("herdr-cli")
-  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated inbox, receipt, history and worker reports are available; parent failure requests are available; dispatch and other parent decisions remain in development.`)
+  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated receipt, history, worker reports and parent completion, feedback and failure are available; dispatch remains in development.`)
   .version(metadata.version)
   .showHelpAfterError();
 
@@ -30,12 +32,13 @@ addInboxCommand(program);
 addHistoryCommands(program);
 addReportCommands(program);
 addFailureCommands(program);
+addReviewCommands(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();
 } catch (error) {
   // Avoid backend exception bodies, validator inputs and tokens in CLI diagnostics.
-  const message = (error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError || error instanceof ReportError || error instanceof FailureError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
+  const message = (error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError || error instanceof ReportError || error instanceof FailureError || error instanceof ReviewError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
     : error instanceof Error && error.constructor === Error ? error.message
     : "Operation failed. Check command inputs and current authorization.";
   console.error(message);

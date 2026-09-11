@@ -1,0 +1,20 @@
+import type { Command } from "commander";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { sendReview, reviewState, type ReviewOptions } from "../review/client";
+export function addReviewCommands(program: Command) {
+  const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
+  for (const command of ["complete", "feedback"] as const) {
+    program.command(command).description(command === "complete"
+      ? "Accept the current submission as completed; retain the worker session."
+      : "Send same-contract corrections; work resumes when the worker receives current feedback.")
+      .requiredOption("--input <file>", "Typed JSON input including task, submission, expected epochs and brief slots; omit requestId")
+      .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
+      .option("--config <file>", "Protected machine profile", config)
+      .action(async (options: ReviewOptions) => { console.log(JSON.stringify(await sendReview(command, options))); });
+  }
+  program.command("review-state").description("Read current owner/revision/review expectations without accepting or receiving anything.")
+    .requiredOption("--task <id>", "Task owned by this parent session")
+    .option("--config <file>", "Protected machine profile", config)
+    .action(async (options: { config: string; task: string }) => { console.log(JSON.stringify(await reviewState(options))); });
+}
