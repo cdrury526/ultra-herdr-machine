@@ -173,7 +173,7 @@ optionally asserts the exact expected SHA-256 content identity.
 
 Reads return `mode: "history"`, the envelope and private artifact path. They expose
 no current task/delivery status and do not reset retention or receipt clocks. The
-current session path covers direct participant grants; ancestor and packet access
+current session path covers direct participant grants; scoped ancestor and packet access
 are still being implemented. Historical ticket confirmation is separate work.
 
 ## Submit a worker report
@@ -493,7 +493,15 @@ It retrieves only the named earlier same-task message, verifies and saves its
 private artifact, and reports `mode: packet`. It does not acknowledge the target,
 start its clocks, or grant general task history. Receive the escalation first.
 Task/session identity references do not grant current-state access; this command
-retrieves message/submission bodies only. Other packet kinds remain unsupported.
+retrieves message/submission bodies only. Received assignments/revisions, question
+context, and submission/failure/reply/notice evidence also grant their explicit
+message references. For these, use `history message --task PACKET_TASK_ID
+--packet RECEIVED_MESSAGE_ID --message REFERENCED_MESSAGE_ID`. The source may belong
+to another task; the saved envelope retains its actual source task identity.
+The packet must already be received and its content still authorized. Only the
+selected explicit reference is readable: there is no whole-source-task grant or
+recursive expansion through another packet. Reads never acknowledge the source or
+restart its clocks. Missing/erased content fails explicitly.
 
 `operator escalations` lists one page of awaiting, unresolved, or blocked review and reply
 escalations addressed to the selected operator, including messages already received.

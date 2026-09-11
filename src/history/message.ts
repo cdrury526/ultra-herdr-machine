@@ -16,7 +16,7 @@ export async function readMessageHistory(options: HistoryOptions) {
       : historyResultSchemas.packet.parse(await client.query(historyApi.packet, { ...input, packetId: options.packet }));
     if (value.mode === "packet" && value.packetId !== options.packet) throw new HistoryError();
     const envelope = await verifyEnvelope(value.canonical);
-    if (envelope.messageId !== options.message || envelope.taskId !== options.task || envelope.messageId !== value.messageId ||
+    if (envelope.messageId !== options.message || (value.mode === "history" && envelope.taskId !== options.task) || envelope.messageId !== value.messageId ||
         envelope.digest !== value.digest || envelope.byteLength !== value.byteLength ||
         (options.digest !== undefined && options.digest !== envelope.digest) ||
         await messageArtifactId(value.deploymentId, envelope) !== value.artifactId) throw new HistoryError();

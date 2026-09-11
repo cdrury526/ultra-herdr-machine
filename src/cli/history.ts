@@ -39,11 +39,11 @@ export function addHistoryCommands(program: Command) {
     .option("--operator-profile <file>", "Explicit operator profile with history.manage; excludes released-session mode")
     .action(async (options: HistoryListOptions) => { console.log(JSON.stringify(await listMessageHistory(options))); });
   history.command("message").description("Read one task-scoped message and save a verified private artifact.")
-    .requiredOption("--task <id>", "Expected task identity")
+    .requiredOption("--task <id>", "Expected task identity, or packet task with --packet")
     .option("--ancestry-check <id>", "Verified current ancestor proof for this task; excludes packet/released/operator modes")
     .requiredOption("--message <id>", "Immutable message identity")
     .option("--digest <sha256>", "Expected message digest")
-    .option("--packet <id>", "Acknowledged execution escalation explicitly referencing this message; operator requires inbox.review")
+    .option("--packet <id>", "Received message explicitly referencing this body; --task is the packet task, operator requires inbox.review")
     .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
     .option("--released-session <id>", "Use this machine's recorded released session and its retained grants")
     .option("--operator-profile <file>", "Explicit operator profile: history.manage, or inbox.review with --packet; excludes released-session mode")
