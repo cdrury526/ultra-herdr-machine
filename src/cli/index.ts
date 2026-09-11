@@ -1,3 +1,4 @@
+import { addInboxCommand } from "./inbox";
 import { addReportCommands } from "./report";
 import { ReportError } from "../reports/input";
 import { addHistoryCommands } from "./history";
@@ -15,7 +16,7 @@ import metadata from "../../package.json";
 
 const program = new Command()
   .name("herdr-cli")
-  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated receipt, history and worker reports are available; dispatch and parent decisions remain in development.`)
+  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated inbox, receipt, history and worker reports are available; dispatch and parent decisions remain in development.`)
   .version(metadata.version)
   .showHelpAfterError();
 
@@ -23,6 +24,7 @@ addAuthCommands(program);
 addCatalogCommands(program);
 addContextCommands(program);
 addReceiveCommand(program);
+addInboxCommand(program);
 addHistoryCommands(program);
 addReportCommands(program);
 program.action(() => program.help());
