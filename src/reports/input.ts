@@ -22,9 +22,9 @@ export function reportSlots(path: string) {
   const value = parseJson(readReportFile(path), reportLimits, "task.report");
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       !Object.hasOwn(value, "values") || !Object.hasOwn(value, "bundleValues") ||
-      Object.keys(value).some(key => !["values", "bundleValues", "attributes"].includes(key)))
-    throw new ReportError("Report input must contain values and bundleValues, with optional attributes only.");
-  return value as { values: Json; bundleValues: Json; attributes?: Json };
+      Object.keys(value).some(key => !["values", "bundleValues", "attributes", "referenceAuthorities"].includes(key)))
+    throw new ReportError("Report input must contain values and bundleValues, with optional attributes and referenceAuthorities.");
+  return value as { values: Json; bundleValues: Json; attributes?: Json; referenceAuthorities?: Json };
 }
 export function reportFailure(error: unknown): ReportError {
   if (error instanceof ReportError) return error;
@@ -34,7 +34,7 @@ export function reportFailure(error: unknown): ReportError {
     const issue = data?.issues?.[0];
     const detail = typeof issue?.code === "string" && /^[A-Z_]{1,64}$/.test(issue.code) ? `/${issue.code}` : "";
     // User-authored property names may contain content. Expose only known structural field names.
-    const fields = new Set(["values", "bundleValues", "attributes", "payload", "evidence", "summary", "references",
+    const fields = new Set(["referenceAuthorities", "referenceId", "checkId", "packetId", "values", "bundleValues", "attributes", "payload", "evidence", "summary", "references",
       "notices", "ownership", "obligation", "recipient", "id", "expectedAssignmentEpoch", "expectedSessionOwnerEpoch", "executionNotice", "responseNotice", "closedNotice", "root", "descendants", "noticeBriefKey", "stopBriefKey", "noticeValues", "stopValues", "noticeBundleValues", "stopBundleValues",
       "taskId", "submissionId", "expectedOwnerEpoch", "expectedRevision", "reviewId", "reviewGeneration", "briefKey", "failedChildren",
       "feedback", "corrections", "criterionResults", "criterion", "outcome", "explanation", "notes", "reason", "blockedOn", "assignmentMessageId", "requestId", "kind"]);

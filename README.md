@@ -338,7 +338,8 @@ Use `ask --input question.json --request-file question-request.json` to send a
 question to an authorized participant in the task. Questions can refer to completed
 tasks and do not pause, restart, or reopen execution. The initial interface supports
 direct task participants, including transferred reply authority. Ancestor-authored
-questions and reuse of packet-only source references remain in development. Include
+questions themselves remain in development; explicit packet/ancestor proofs can
+authorize cited source references as described below. Include
 `--config` when using a nondefault machine profile.
 
 Question input contains `taskId`, `recipientSessionId`, `briefKey`, `values`,
@@ -503,6 +504,30 @@ The packet must already be received and its content still authorized. Only the
 selected explicit reference is readable: there is no whole-source-task grant or
 recursive expansion through another packet. Reads never acknowledge the source or
 restart its clocks. Missing/erased content fails explicitly.
+
+When citing a source that is readable only through a received packet or ancestor
+proof, add optional `referenceAuthorities` beside `values` and `bundleValues` in
+report, question/reply, revision or completion input. The `referenceId` must identify
+a cited reference; duplicate and unused mappings fail. Examples:
+
+```json
+{
+  "referenceAuthorities": [
+    {"kind": "packet", "referenceId": "SOURCE_MESSAGE_ID", "taskId": "PACKET_TASK_ID", "packetId": "RECEIVED_MESSAGE_ID"},
+    {"kind": "ancestor", "referenceId": "DESCENDANT_MESSAGE_ID", "checkId": "VERIFIED_ANCESTRY_CHECK_ID"}
+  ]
+}
+```
+
+Use the mapping appropriate to each source; other input fields remain required.
+Packet proof permits only the explicitly received message/submission edge. Ancestor
+proof permits the referenced task or its message/submission under current ownership.
+A supplied stale or wrong proof fails even if another grant could permit the source.
+Proofs authorize citation, not the destination task operation, its recipient, or
+reply/control authority. They are included in the request digest; an unchanged
+accepted retry returns the original result rather than creating a new citation.
+Staged failure input does not yet accept these proofs.
+
 
 `operator escalations` lists one page of awaiting, unresolved, or blocked review and reply
 escalations addressed to the selected operator, including messages already received.
