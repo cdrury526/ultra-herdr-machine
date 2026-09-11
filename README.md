@@ -348,7 +348,8 @@ already authorized request recipient for an update. Input contains
 `requestMessageId`, `briefKey`, `values`, `bundleValues`, and optional `attributes`.
 For the initial `nudge` brief, `values.payload` contains that same
 `requestMessageId` and `text`. Refer to the original addressed message, not an
-earlier nudge, reply or system reminder. The backend resolves its recipient and applies
+earlier nudge or system reminder. A reply awaiting receipt is itself an addressed
+message and can be nudged by a permitted participant other than its recipient. The backend resolves its recipient and applies
 the original request's pinned cooldown (five minutes in the initial catalog),
 shared across senders and brief choices. An unopened earlier nudge does not prevent
 a new one after cooldown. Nudges do not reset receipt/reply deadlines, resolve
