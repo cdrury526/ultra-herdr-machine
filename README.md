@@ -581,3 +581,17 @@ informational nudge; receipt does not reset the original reply deadline. Backend
 checks verify cooldown, retry and receipt alongside operator extension and revision
 success (including worker receipt). Operator-originated nudges, operator resume
 acceptance and real-JWT compiled ownership verification remain pending.
+
+API/CLI 0.31.0 adds `operator-stop`, `operator-fail`, `operator-stop-status`, and
+`operator-failure-status`. Explicit takeover/handoff must make the operator the
+current owner first. Supply `--operator-profile`, expected task/owner/revision,
+brief input and a protected retry journal. Preparing means pending; status does
+not refresh authorization. Repeating the unchanged request can renew preparation
+under fresh credentials from the same operator family.
+
+Scheduled work checks the stored ordinary credential's expiry, revocation, family
+and capabilities without a machine binding or stored JWT. Live backend checks cover
+operator stop acceptance, worker receipt, explicit resume/receipt, failure acceptance
+and same-intent recovery. Caller/runtime are modeled and operator identity uses
+admin impersonation. Compiled real-JWT acceptance, operator authorization recovery/
+revocation faults, descendant combinations and expiry-precedence races remain pending.

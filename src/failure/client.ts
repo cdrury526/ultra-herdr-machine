@@ -4,9 +4,9 @@ import { failureApi, failureResultSchemas, stopApi, stopResultSchemas, canonical
 import { clientFor, loadProfile } from "../auth/client";
 import { resolveCaller } from "../context/resolve";
 import { ContextError } from "../context/errors";
-import { readFailureRequest, reportRequest } from "../reports/journal";
+import { readFailureRequest, readOperatorFailureRequest, reportRequest } from "../reports/journal";
 import { ReportError, reportFailure, reportLimits, readReportFile } from "../reports/input";
-export interface FailureOptions { config: string; task: string; ownerEpoch: string; revision: string; input: string; requestFile: string }
+export interface FailureOptions { config?: string; operatorProfile?: string; task: string; ownerEpoch: string; revision: string; input: string; requestFile: string }
 export class FailureError extends Error {}
 function failureError(error: unknown, kind: "failure" | "stop"): never {
   if (error instanceof ContextError || error instanceof FailureError) throw error;
@@ -35,12 +35,19 @@ function display(result: ReturnType<typeof failureResultSchemas.status.parse>, k
 export async function requestFailure(options: FailureOptions, kind: "failure" | "stop" = "failure") {
   const api = kind === "stop" ? stopApi : failureApi, schemas = kind === "stop" ? stopResultSchemas : failureResultSchemas;
   try {
-    const config = resolve(options.config), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
+    const config = resolve(options.operatorProfile ?? options.config!), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
     if (requestFile === config || requestFile === inputFile) throw new FailureError("Use a separate protected retry journal.");
     const ownerEpoch = epoch(options.ownerEpoch), revision = epoch(options.revision);
     if (!options.task || options.task.length > 256) throw new FailureError("Provide the task identity.");
     const slots = parseJson(readReportFile(inputFile), reportLimits, "task.failure");
     const briefs = canonicalJson(slots, reportLimits, "task.failure");
+    if (options.operatorProfile) {
+      const profile = await loadProfile(config, "operator");
+      const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, operatorId: profile.principalId,
+        kind: `operator_${kind}`, taskId: options.task, ownerEpoch, revision, inputDigest: (await jsonDigest(slots, reportLimits, "task.failure")).value });
+      const input = JSON.stringify({ requestId, taskId: options.task, expectedOwnerEpoch: ownerEpoch, expectedRevision: revision });
+      return display(schemas.operatorRequest.parse(await clientFor(profile, (url, init) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) })).mutation(api.operatorRequest, { input, briefs })), kind);
+    }
     const { profile, caller, client } = await context(config);
     const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, machineId: caller.machineId,
       callerSessionId: caller.sessionId, kind: `parent_${kind}`, taskId: options.task, ownerEpoch, revision,
@@ -50,11 +57,16 @@ export async function requestFailure(options: FailureOptions, kind: "failure" | 
       { verificationId: caller.verificationRequestId, input, briefs })), kind);
   } catch (error) { failureError(error, kind); }
 }
-export async function failureStatus(options: Pick<FailureOptions, "config" | "requestFile">, kind: "failure" | "stop" = "failure") {
+export async function failureStatus(options: Pick<FailureOptions, "config" | "operatorProfile" | "requestFile">, kind: "failure" | "stop" = "failure") {
   const api = kind === "stop" ? stopApi : failureApi, schemas = kind === "stop" ? stopResultSchemas : failureResultSchemas;
   try {
+    if (options.operatorProfile) {
+      const saved = readOperatorFailureRequest(resolve(options.requestFile), kind), profile = await loadProfile(resolve(options.operatorProfile), "operator");
+      if (saved.scope.deploymentUrl !== profile.convexUrl || saved.scope.operatorId !== profile.principalId) throw new ReportError("Retry journal belongs to a different operator or deployment.");
+      return display(schemas.operatorStatus.parse(await clientFor(profile, (url, init) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) })).query(api.operatorStatus, { requestId: saved.requestId })), kind);
+    }
     const saved = readFailureRequest(resolve(options.requestFile), kind);
-    const { profile, caller, client } = await context(resolve(options.config));
+    const { profile, caller, client } = await context(resolve(options.config!));
     if (saved.scope.deploymentUrl !== profile.convexUrl || saved.scope.machineId !== caller.machineId || saved.scope.callerSessionId !== caller.sessionId)
       throw new ReportError("Retry journal belongs to a different deployment or caller.");
     return display(schemas.status.parse(await client.query(api.status,
