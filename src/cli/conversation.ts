@@ -14,6 +14,11 @@ export function addConversationCommands(program: Command) {
       .option("--config <file>", "Protected machine profile", config)
       .action(async (options: ConversationOptions) => { console.log(JSON.stringify(await sendConversation(kind, options))); });
   }
+  program.command("operator-reply").description("Answer an obligation transferred to the authenticated operator.")
+    .requiredOption("--operator-profile <file>", "Explicit operator profile with current response authority")
+    .requiredOption("--input <file>", "Typed reply input and slots; omit kind and requestId")
+    .requiredOption("--request-file <file>", "Protected journal; reuse for unchanged retries")
+    .action(async (options: ConversationOptions) => { console.log(JSON.stringify(await sendConversation("reply", options))); });
   program.command("question-state").description("Inspect your question's response obligation without receiving content or changing clocks.")
     .requiredOption("--request <message-id>", "Immutable question message identity")
     .option("--config <file>", "Protected machine profile", config)

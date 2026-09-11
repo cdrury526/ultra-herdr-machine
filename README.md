@@ -553,3 +553,11 @@ Transferred obligation notices include a verified original-content artifact as
 backend domain and local client checks; compiled live ownership acceptance, operator
 response actions and replacement are still under implementation. This does not
 establish actual worker launch or dispatch.
+
+`operator-reply` (API/CLI 0.29.0) answers a question whose response authority was
+transferred to the explicitly authenticated operator. Supply `--operator-profile`,
+`--input` and a protected `--request-file`; input uses the ordinary reply fields
+without `kind` or `requestId`. Only a current final answer resolves the obligation.
+Backend live checks cover authority, stale generation, retries and requester receipt;
+compiled live operator-reply acceptance remains pending. Operator review actions,
+operator-directed nudges and replacement are still under implementation.

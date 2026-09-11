@@ -1,3 +1,4 @@
+import { clientFor, loadProfile } from "../auth/client";
 import { resolve } from "node:path";
 import { conversationApi, conversationResultSchemas, canonicalJson, jsonDigest, parseJson } from "@ultra-herdr/api";
 import { ContextError } from "../context/errors";
@@ -5,18 +6,28 @@ import { readReportFile, reportLimits, reportFailure } from "../reports/input";
 import { reportRequest } from "../reports/journal";
 import { messageContext } from "../reports/context";
 export class ConversationError extends Error {}
-export interface ConversationOptions { config: string; input: string; requestFile: string }
+export interface ConversationOptions { config?: string; operatorProfile?: string; input: string; requestFile: string }
 function failure(error: unknown): never {
   if (error instanceof ContextError || error instanceof ConversationError) throw error;
   throw new ConversationError(reportFailure(error).message.replace(/\breport\b/gi, "conversation"));
 }
 export async function sendConversation(kind: "question" | "reply" | "nudge", options: ConversationOptions) {
   try {
-    const config = resolve(options.config), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
+    const config = resolve(options.operatorProfile ?? options.config!), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
     if (requestFile === config || requestFile === inputFile) throw new ConversationError("Use a separate protected retry journal.");
     const input = parseJson(readReportFile(inputFile), reportLimits, "task.conversation");
     if (!input || typeof input !== "object" || Array.isArray(input) || Object.hasOwn(input, "requestId") || Object.hasOwn(input, "kind"))
       throw new ConversationError("Provide typed conversation input without kind or requestId; the CLI supplies them.");
+    if (options.operatorProfile) {
+      if (kind !== "reply") throw new ConversationError("Operator conversation currently supports transferred replies.");
+      const profile = await loadProfile(config, "operator");
+      const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, operatorId: profile.principalId,
+        kind: "operator_reply", inputDigest: (await jsonDigest(input, reportLimits, "task.conversation")).value });
+      const client = clientFor(profile, (url, init) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) }));
+      const accepted = conversationResultSchemas.operatorReply.parse(await client.mutation(conversationApi.operatorReply,
+        { input: canonicalJson({ ...input, kind, requestId }, reportLimits, "task.conversation") }));
+      return { ...accepted, requestId };
+    }
     const { profile, caller, client } = await messageContext(config);
     const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, machineId: caller.machineId,
       callerSessionId: caller.sessionId, kind: "conversation", operation: kind,
