@@ -610,3 +610,30 @@ API/CLI 0.33.0 validates optional replacement context in assignment envelopes:
 `sourceInstructions: "superseded"`. These identify retained prior-task history;
 the new assignment supplies the governing instructions. Public replacement/dispatch
 commands still await their orchestration integration.
+
+### Cloud history disposal
+
+An operator with `history.manage` can request audited disposal. The backend checks
+retention age, active work, unanswered requests and protected references, then
+continues in bounded batches. `--early` explicitly bypasses only the age requirement.
+
+```bash
+herdr-cli history cleanup --task <task-id> --reason "Approved history disposal" \
+  --operator-profile /secure/operator.json --request-file /secure/cleanup-request.json
+herdr-cli history cleanup-status --cleanup <cleanup-id> --operator-profile /secure/operator.json
+herdr-cli history cleanup-list --task <task-id> --operator-profile /secure/operator.json
+```
+
+Reuse the same request file for unchanged retries. `cleanup-resume --cleanup <id>`
+uses current operator authority to advance and rearm interrupted work.
+`cleanup-cancel --cleanup <id>` cancels checking before deletion is accepted;
+accepted deletion must finish. Both require `--operator-profile`. Canceling an
+automatic attempt does not disable the retention policy; a later sweep reevaluates
+eligibility.
+
+Disposal revokes old tickets and erases eligible cloud bodies while preserving task,
+session and audit identities. Later authorized questions and explicit session release
+remain possible. Local verified artifacts and credentials are untouched; local
+artifact cleanup is not yet implemented. Automatic cloud cleanup uses a configurable
+one-year default and rechecks substantive activity and references before acceptance.
+API/CLI 0.34.0 adds these disposal commands.
