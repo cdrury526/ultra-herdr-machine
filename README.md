@@ -337,9 +337,8 @@ conflicts with that journal.
 Use `ask --input question.json --request-file question-request.json` to send a
 question to an authorized participant in the task. Questions can refer to completed
 tasks and do not pause, restart, or reopen execution. The initial interface supports
-direct task participants, including transferred reply authority. Ancestor-authored
-questions themselves remain in development; explicit packet/ancestor proofs can
-authorize cited source references as described below. Include
+direct task participants, including transferred reply authority. Current ancestors can add `ancestryCheckId` to question or nudge input; explicit
+packet/ancestor citation proofs remain separate as described below. Include
 `--config` when using a nondefault machine profile.
 
 Question input contains `taskId`, `recipientSessionId`, `briefKey`, `values`,
@@ -527,6 +526,18 @@ Proofs authorize citation, not the destination task operation, its recipient, or
 reply/control authority. They are included in the request digest; an unchanged
 accepted retry returns the original result rather than creating a new citation.
 Staged failure input does not yet accept these proofs.
+
+For a new ancestor question or nudge, add `"ancestryCheckId": "VERIFIED_CHECK_ID"`
+to ordinary `ask`/`nudge` input. The proof must target that conversation's task and
+is checked against current ancestor ownership. Recipients still need ordinary
+current task-message authority. The accepted question gives its requester narrow
+access to that question and addressed replies, including after ancestor ownership
+changes; it creates no general task participation. Read replies through `receive`
+or their explicit history message ID. `question-state` remains requester/responder
+only. New questions/nudges after authority loss fail; an unchanged accepted retry
+returns its original result. Discarding an unused ancestry proof does not erase the
+accepted conversation's audit or its narrow historical grant.
+
 
 
 `operator escalations` lists one page of awaiting, unresolved, or blocked review and reply
