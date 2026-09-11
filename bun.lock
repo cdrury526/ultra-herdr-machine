@@ -5,7 +5,7 @@
     "": {
       "name": "ultra-herdr-machine",
       "dependencies": {
-        "@ultra-herdr/api": "file:vendor/ultra-herdr-api-0.21.0-2503e2d1.tgz",
+        "@ultra-herdr/api": "file:vendor/ultra-herdr-api-0.22.0-ba5f59a7.tgz",
         "canonicalize": "5.0.0",
         "commander": "15.0.0",
         "convex": "1.45.0",
@@ -80,7 +80,7 @@
 
     "@types/react": ["@types/react@19.2.0", "", { "dependencies": { "csstype": "^3.0.2" } }, "sha512-1LOH8xovvsKsCBq1wnT4ntDUdCJKmnEakhsuoUSy6ExlHCkGP2hqnatagYTgFk6oeL0VU31u7SNjunPN+GchtA=="],
 
-    "@ultra-herdr/api": ["@ultra-herdr/api@vendor/ultra-herdr-api-0.21.0-2503e2d1.tgz", { "peerDependencies": { "convex": "1.45.0", "zod": "4.5.4" } }, "sha512-dP0SQy8UNQpqdrkCcxtQfCxsiG+bNNP0dqm48MG1wrqYf5eX7thbJ32ohKqzMhTMleeiT11X82K+TQZvG1zKaA=="],
+    "@ultra-herdr/api": ["@ultra-herdr/api@vendor/ultra-herdr-api-0.22.0-ba5f59a7.tgz", { "peerDependencies": { "convex": "1.45.0", "zod": "4.5.4" } }, "sha512-zqSLPx69zzO2+38xCo/L4n54LeJrllD1FYPP/VWXHy+S5nChzjHvR+jv2RIjgc9iLJwTxVId8HCHBvR6ZSz/lg=="],
 
     "ansi-escapes": ["ansi-escapes@7.3.0", "", { "dependencies": { "environment": "^1.0.0" } }, "sha512-BvU8nYgGQBxcmMuEeUEmNTvrMVjJNSH7RgW24vXexN4Ven6qCvy4TntnvlnwnMLTVlcRQQdbRY8NKnaIoeWDNg=="],
 

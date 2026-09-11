@@ -14,7 +14,10 @@ const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.stri
   kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise", "extend", "resume"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const conversationScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("conversation"), operation: z.enum(["question", "reply", "nudge"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
-const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);
+const releaseScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
+  kind: z.literal("session_release"), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+export type ReleaseScope = z.infer<typeof releaseScopeShape>;
+const scopeShape = z.union([releaseScopeShape,reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);
 const journalShape = z.object({ version: z.literal(1), requestId: z.string().uuid(), scope: scopeShape }).strict();
 export type ConversationScope = z.infer<typeof conversationScopeShape>;
 export type ReportScope = z.infer<typeof reportScopeShape>;
@@ -22,7 +25,7 @@ export type ReviewScope = z.infer<typeof reviewScopeShape>;
 export type FailureScope = z.infer<typeof failureScopeShape>;
 
 /** A fresh journal is a new intent; identical retries reuse its UUID across process loss. No bodies or tickets are stored. */
-export async function reportRequest(path: string, scope: ReportScope | FailureScope | ReviewScope | ConversationScope) {
+export async function reportRequest(path: string, scope: ReportScope | FailureScope | ReviewScope | ConversationScope | ReleaseScope) {
   return withCredentialLock(path, async lockedPath => {
     let exists = true;
     try { lstatSync(lockedPath); } catch (error) {

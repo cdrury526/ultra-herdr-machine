@@ -1,3 +1,5 @@
+import { addReleaseCommands } from "./release";
+import { ReleaseError } from "../release/client";
 import { addConversationCommands } from "./conversation";
 import { ConversationError } from "../conversation/client";
 import { addReviewCommands } from "./review";
@@ -35,13 +37,14 @@ addHistoryCommands(program);
 addReportCommands(program);
 addFailureCommands(program);
 addReviewCommands(program);
+addReleaseCommands(program);
 addConversationCommands(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();
 } catch (error) {
   // Avoid backend exception bodies, validator inputs and tokens in CLI diagnostics.
-  const message = (error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError || error instanceof ReportError || error instanceof FailureError || error instanceof ReviewError || error instanceof ConversationError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
+  const message = (error instanceof ReleaseError || error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError || error instanceof ReportError || error instanceof FailureError || error instanceof ReviewError || error instanceof ConversationError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
     : error instanceof Error && error.constructor === Error ? error.message
     : "Operation failed. Check command inputs and current authorization.";
   console.error(message);
