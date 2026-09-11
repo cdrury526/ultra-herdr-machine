@@ -12,7 +12,7 @@ function owned(fd: number, directory: boolean) {
   if (stat.uid !== process.getuid!() || (stat.mode & 0o777) !== (directory ? 0o700 : 0o600) ||
       (directory ? !stat.isDirectory() : !stat.isFile())) throw new ReceiveError();
 }
-function read(fd: number) {
+export function readArtifactText(fd: number) {
   owned(fd, false);
   if (fstatSync(fd).size > 1048576) throw new ReceiveError();
   const buffer = Buffer.alloc(1048577); let size = 0, count: number;
@@ -53,7 +53,7 @@ export async function saveArtifact(directory: string, deploymentId: string, arti
     // A concurrent receiver may have won publication. Verify that file; never replace it.
     const existing = openSync(target, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
-      const text = read(existing);
+      const text = readArtifactText(existing);
       const saved = await verifyEnvelope(text);
       if (await messageArtifactId(deploymentId, saved) !== artifactId || text !== bytes.toString("utf8")) throw new ReceiveError();
       fsyncSync(existing);

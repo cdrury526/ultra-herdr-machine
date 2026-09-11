@@ -1,5 +1,6 @@
 import { listMessageHistory, type HistoryListOptions } from "../history/list";
 import { addHistoryCleanupCommands } from "./historyCleanup";
+import { addLocalCleanupCommands } from "./localCleanup";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,7 @@ import { readMessageHistory, type HistoryOptions } from "../history/message";
 export function addHistoryCommands(program: Command) {
   const history = program.command("history").description("Inspect authorized immutable history without applying receipt effects.");
   addHistoryCleanupCommands(history);
+  addLocalCleanupCommands(history);
   history.command("list").description("List one authorized page of immutable message metadata in task order.")
     .requiredOption("--task <id>", "Task identity")
     .option("--cursor <cursor>", "Continue a previous page; restart if history or permissions changed")

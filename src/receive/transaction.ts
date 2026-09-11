@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import canonicalize from "canonicalize";
 import { verifyEnvelope, messageArtifactId } from "@ultra-herdr/api";
 import { saveArtifact, ReceiveError } from "./artifact";
+import { withArtifactLock } from "./artifactLock";
 const identity = z.string().min(1).max(256), positive = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const sourcePacket = z.object({ canonical: z.string().max(1048576), messageId: identity, artifactId: hash, digest: hash, byteLength: positive }).strict();
@@ -47,7 +48,7 @@ async function finish<T extends ConfirmationBase>(domain: string, input: Omit<T,
 }
 /** Thin client sequencing only. Backend owns authorization and all receipt effects. */
 export async function receiveMessage(transport: ReceiveTransport, directory: string, caller: { sessionId: string; bindingEpoch: number }) {
-  try {
+  return withArtifactLock(directory, async () => { try {
     const value = exchange.parse(await transport.exchange());
     if (value.bindingEpoch !== caller.bindingEpoch) throw new ReceiveError();
     const saved = await artifact(value, directory, { kind: "session", id: caller.sessionId });
@@ -55,11 +56,11 @@ export async function receiveMessage(transport: ReceiveTransport, directory: str
       generation: value.generation, bindingEpoch: value.bindingEpoch, artifactId: value.artifactId, digest: value.digest, byteLength: value.byteLength },
       input => transport.confirm(input));
     return { ...saved, ...confirmed };
-  } catch { throw new ReceiveError(); }
+  } catch { throw new ReceiveError(); } });
 }
 /** Operator identity replaces pane binding. Stable requests survive process interruption and credential renewal. */
 export async function receiveOperatorMessage(transport: OperatorReceiveTransport, directory: string, operatorId: string) {
-  try {
+  return withArtifactLock(directory, async () => { try {
     const value = operatorExchange.parse(await transport.exchange());
     if (value.operatorId !== operatorId) throw new ReceiveError();
     const saved = await artifact(value, directory, { kind: "operator", id: operatorId });
@@ -67,5 +68,5 @@ export async function receiveOperatorMessage(transport: OperatorReceiveTransport
       deliveryId: value.deliveryId, generation: value.generation, artifactId: value.artifactId, digest: value.digest, byteLength: value.byteLength },
       input => transport.confirm(input));
     return { ...saved, ...confirmed };
-  } catch { throw new ReceiveError(); }
+  } catch { throw new ReceiveError(); } });
 }

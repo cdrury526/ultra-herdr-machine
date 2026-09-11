@@ -633,7 +633,36 @@ eligibility.
 
 Disposal revokes old tickets and erases eligible cloud bodies while preserving task,
 session and audit identities. Later authorized questions and explicit session release
-remain possible. Local verified artifacts and credentials are untouched; local
-artifact cleanup is not yet implemented. Automatic cloud cleanup uses a configurable
+remain possible. Cloud disposal leaves local verified artifacts and credentials untouched. Local
+artifact cleanup is a separate explicit operation below. Automatic cloud cleanup uses a configurable
 one-year default and rechecks substantive activity and references before acceptance.
 API/CLI 0.34.0 adds these disposal commands.
+
+
+### Local artifact cleanup
+
+Preview one task, one assigned-worker/message-participant session, or the selected
+profile's cache. Preview never removes files. Use a new private manifest filename;
+existing files are not overwritten.
+
+```bash
+herdr-cli history local-cleanup preview --task <task-id> \
+  --operator-profile /secure/operator.json --preview-file /secure/cache-preview.json
+herdr-cli history local-cleanup apply \
+  --operator-profile /secure/operator.json --preview-file /secure/cache-preview.json
+```
+
+Replace `--task` with `--session <id>` or `--eligible-cache` to change scope. A
+preview inspects 100 files by default (`--limit` up to 1000); use its `next` value
+with `--after` and a new manifest for another page. Apply removes eligible IDs from
+that manifest; `--artifact <ids...>` selects a subset. Scope is fixed by the manifest.
+Machine profiles use the same live or `--released-session` history authority as
+history reads; `--operator-profile` selects that operator's adjacent cache.
+
+Apply rechecks current backend permission and file identity. Active tasks and
+unanswered requests block removal. Replaced files require a new preview; already
+absent files are harmless retries. Cleanup and artifact saving share a local lock.
+Unknown files, symlinks, malformed envelopes and credentials are excluded. Local
+cleanup changes no cloud content or receipt facts. Retained cloud content can be
+retrieved again; new receives may save fresh artifacts after cleanup.
+API/CLI 0.35.0 adds this explicit local cleanup flow.

@@ -1,5 +1,6 @@
 import { historyApi, historyResultSchemas, verifyEnvelope, messageArtifactId } from "@ultra-herdr/api";
 import { saveArtifact } from "../receive/artifact";
+import { withArtifactLock } from "../receive/artifactLock";
 import { historyConnection, HistoryError, type HistoryScopeOptions } from "./client";
 export { HistoryError } from "./client";
 export interface HistoryOptions extends HistoryScopeOptions { message: string; digest?: string; packet?: string }
@@ -17,7 +18,7 @@ export async function readMessageHistory(options: HistoryOptions) {
         envelope.digest !== value.digest || envelope.byteLength !== value.byteLength ||
         (options.digest !== undefined && options.digest !== envelope.digest) ||
         await messageArtifactId(value.deploymentId, envelope) !== value.artifactId) throw new HistoryError();
-    const path = await saveArtifact(`${config}.messages`, value.deploymentId, value.artifactId, envelope);
+    const path = await withArtifactLock(`${config}.messages`, () => saveArtifact(`${config}.messages`, value.deploymentId, value.artifactId, envelope));
     // History is a read, never a receipt: do not call confirm or synthesize a receipt result.
     return { mode: value.mode, path, envelope };
   } catch { throw new HistoryError(); }
