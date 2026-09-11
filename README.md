@@ -574,3 +574,10 @@ Live backend checks exercise operator feedback, worker receipt/resumption, a cor
 submission, operator report receipt, completion/retry and retained session reservation.
 Operator revision/extension/resume success and compiled live real-JWT acceptance remain
 pending; shared session behavior is not claimed as new operator acceptance evidence.
+
+The existing worker `nudge` command also routes to an operator after that operator
+receives response authority through takeover/handoff. `operator-receive` accepts the
+informational nudge; receipt does not reset the original reply deadline. Backend
+checks verify cooldown, retry and receipt alongside operator extension and revision
+success (including worker receipt). Operator-originated nudges, operator resume
+acceptance and real-JWT compiled ownership verification remain pending.
