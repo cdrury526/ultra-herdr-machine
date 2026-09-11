@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { sendReview, reviewState, budgetState, type ReviewOptions } from "../review/client";
+import { sendReview, reviewState, operatorReviewState, budgetState, type ReviewOptions } from "../review/client";
 export function addReviewCommands(program: Command) {
   const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
   for (const command of ["complete", "feedback", "revise", "extend", "resume"] as const) {
@@ -16,6 +16,17 @@ export function addReviewCommands(program: Command) {
       .option("--config <file>", "Protected machine profile", config)
       .action(async (options: ReviewOptions) => { console.log(JSON.stringify(await sendReview(command, options))); });
   }
+  for (const command of ["complete", "feedback", "revise", "extend", "resume"] as const) {
+    program.command(`operator-${command}`).description(`Apply ${command} as the authenticated current operator owner.`)
+      .requiredOption("--operator-profile <file>", "Explicit operator profile")
+      .requiredOption("--input <file>", "Typed operation and expected epochs; omit requestId")
+      .requiredOption("--request-file <file>", "Protected journal; reuse for unchanged retries")
+      .action(async (options: ReviewOptions) => { console.log(JSON.stringify(await sendReview(command, options))); });
+  }
+  program.command("operator-review-state").description("Read review metadata for a task currently owned by this operator.")
+    .requiredOption("--operator-profile <file>", "Explicit operator profile")
+    .requiredOption("--task <id>", "Task identity")
+    .action(async options => { console.log(JSON.stringify(await operatorReviewState(options))); });
   program.command("budget").description("Read a timestamped owner budget snapshot and original extension limits without changing execution.")
     .requiredOption("--task <id>", "Task owned by this parent session")
     .option("--config <file>", "Protected machine profile", config)

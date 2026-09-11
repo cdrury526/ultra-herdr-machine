@@ -1,3 +1,4 @@
+import { clientFor, loadProfile } from "../auth/client";
 import { resolve } from "node:path";
 import { reviewApi, reviewResultSchemas, canonicalJson, jsonDigest, parseJson } from "@ultra-herdr/api";
 import { messageContext as context } from "../reports/context";
@@ -5,18 +6,27 @@ import { ContextError } from "../context/errors";
 import { readReportFile, reportLimits, reportFailure } from "../reports/input";
 import { reportRequest } from "../reports/journal";
 export class ReviewError extends Error {}
-export interface ReviewOptions { config: string; input: string; requestFile: string }
+export interface ReviewOptions { config?: string; operatorProfile?: string; input: string; requestFile: string }
 function failure(error: unknown): never {
   if (error instanceof ContextError || error instanceof ReviewError) throw error;
   throw new ReviewError(reportFailure(error).message.replace(/\breport\b/gi, "parent review"));
 }
 export async function sendReview(operation: "complete" | "feedback" | "revise" | "extend" | "resume", options: ReviewOptions) {
   try {
-    const config = resolve(options.config), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
+    const config = resolve(options.operatorProfile ?? options.config!), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
     if (requestFile === config || requestFile === inputFile) throw new ReviewError("Use a separate protected retry journal.");
     const input = parseJson(readReportFile(inputFile), reportLimits, "task.parentReview");
     if (!input || typeof input !== "object" || Array.isArray(input) || typeof input.taskId !== "string" || Object.hasOwn(input, "requestId"))
       throw new ReviewError("Provide a taskId and typed parent operation input. The CLI generates requestId.");
+    if (options.operatorProfile) {
+      const profile = await loadProfile(config, "operator");
+      const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, operatorId: profile.principalId,
+        kind: "operator_review", operation, inputDigest: (await jsonDigest(input, reportLimits, "task.parentReview")).value });
+      const client = clientFor(profile, (url, init) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) }));
+      const accepted = reviewResultSchemas.operatorAction.parse(await client.mutation(reviewApi.operatorAction,
+        { operation, input: canonicalJson({ ...input, requestId }, reportLimits, "task.parentReview") }));
+      return { ...accepted, requestId };
+    }
     const { profile, caller, client } = await context(config);
     const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, machineId: caller.machineId,
       callerSessionId: caller.sessionId, kind: "parent_review", operation,
@@ -36,3 +46,10 @@ async function ownerState(operation: "state" | "budget", options: { config: stri
 
 export const reviewState = (options: { config: string; task: string }) => ownerState("state", options);
 export const budgetState = (options: { config: string; task: string }) => ownerState("budget", options);
+
+export async function operatorReviewState(options: { operatorProfile: string; task: string }) {
+  try {
+    const profile = await loadProfile(resolve(options.operatorProfile), "operator");
+    return reviewResultSchemas.operatorState.parse(await clientFor(profile).query(reviewApi.operatorState, { taskId: options.task }));
+  } catch (error) { failure(error); }
+}

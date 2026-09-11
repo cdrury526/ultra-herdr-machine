@@ -20,7 +20,10 @@ export type ReleaseScope = z.infer<typeof releaseScopeShape>;
 const operatorReleaseScopeShape = z.object({ deploymentUrl: z.string(), operatorId: z.string(),
   kind: z.enum(["operator_session_release", "operator_force_review", "operator_force_release", "operator_handoff", "operator_takeover", "operator_reply"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 export type OperatorReleaseScope = z.infer<typeof operatorReleaseScopeShape>;
-const scopeShape = z.union([operatorReleaseScopeShape,releaseScopeShape,reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);
+const operatorReviewScopeShape = z.object({ deploymentUrl: z.string(), operatorId: z.string(), kind: z.literal("operator_review"),
+  operation: z.enum(["complete", "feedback", "revise", "extend", "resume"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+export type OperatorReviewScope = z.infer<typeof operatorReviewScopeShape>;
+const scopeShape = z.union([operatorReviewScopeShape,operatorReleaseScopeShape,releaseScopeShape,reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);
 const journalShape = z.object({ version: z.literal(1), requestId: z.string().uuid(), scope: scopeShape }).strict();
 export type ConversationScope = z.infer<typeof conversationScopeShape>;
 export type ReportScope = z.infer<typeof reportScopeShape>;
@@ -28,7 +31,7 @@ export type ReviewScope = z.infer<typeof reviewScopeShape>;
 export type FailureScope = z.infer<typeof failureScopeShape>;
 
 /** A fresh journal is a new intent; identical retries reuse its UUID across process loss. No bodies or tickets are stored. */
-export async function reportRequest(path: string, scope: ReportScope | FailureScope | ReviewScope | ConversationScope | ReleaseScope | OperatorReleaseScope) {
+export async function reportRequest(path: string, scope: OperatorReviewScope | ReportScope | FailureScope | ReviewScope | ConversationScope | ReleaseScope | OperatorReleaseScope) {
   return withCredentialLock(path, async lockedPath => {
     let exists = true;
     try { lstatSync(lockedPath); } catch (error) {

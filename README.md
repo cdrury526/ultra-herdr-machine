@@ -561,3 +561,16 @@ without `kind` or `requestId`. Only a current final answer resolves the obligati
 Backend live checks cover authority, stale generation, retries and requester receipt;
 compiled live operator-reply acceptance remains pending. Operator review actions,
 operator-directed nudges and replacement are still under implementation.
+
+API/CLI 0.30.0 adds `operator-feedback`, `operator-complete`, `operator-revise`,
+`operator-extend`, `operator-resume`, and `operator-review-state`. Use an explicit
+`--operator-profile`; actions use the ordinary typed input and protected retry
+journal. Fresh credentials and current task ownership authorize new actions.
+Same-intent retries recover the already accepted result under retained message access;
+they do not repeat the action or regain task control. Operator-addressed submissions
+and failure reports are receivable without implicitly completing the task.
+
+Live backend checks exercise operator feedback, worker receipt/resumption, a corrected
+submission, operator report receipt, completion/retry and retained session reservation.
+Operator revision/extension/resume success and compiled live real-JWT acceptance remain
+pending; shared session behavior is not claimed as new operator acceptance evidence.
