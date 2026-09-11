@@ -1,3 +1,4 @@
+import { previewForceRelease, previewOperatorForceRelease } from "../release/preview";
 import { checkReleaseAuthority, discardReleaseAuthority } from "../release/ancestry";
 import { requestOperatorRelease, operatorReleaseState, operatorReleaseStatus } from "../release/operator";
 import type { Command } from "commander";
@@ -19,6 +20,18 @@ export function addReleaseCommands(program: Command) {
     .requiredOption("--request-id <id>", "Operator's release request identity")
     .action(async options => { console.log(JSON.stringify(await operatorReleaseStatus(options))); });
   const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
+  program.command("force-release-preview").description("Inspect active work and unanswered requests in bounded pages; no force release is accepted.")
+    .requiredOption("--task <id>", "Latest task for an owned worker session")
+    .option("--cursor <value>", "Continue the returned cursor; restart if stale, including after a changed obligation")
+    .option("--limit <count>", "Page size within the current backend processing policy")
+    .option("--config <file>", "Protected machine profile", config)
+    .action(async options => { console.log(JSON.stringify(await previewForceRelease(options))); });
+  program.command("operator-force-release-preview").description("Inspect force-release obligations with sessions.forceRelease; metadata only, no accepted override.")
+    .requiredOption("--task <id>", "Latest task for the worker session")
+    .requiredOption("--operator-profile <file>", "Explicit protected operator profile")
+    .option("--cursor <value>", "Continue the returned cursor; restart if stale")
+    .option("--limit <count>", "Page size within the current backend processing policy")
+    .action(async options => { console.log(JSON.stringify(await previewOperatorForceRelease(options))); });
   program.command("release-authority").description("Advance one bounded ancestor-verification page; repeat the same journal while searching. Use verified checkId as ancestryCheckId in release input.")
     .requiredOption("--task <id>", "Descendant task")
     .requiredOption("--request-file <file>", "Protected retry journal for this ancestry check")
