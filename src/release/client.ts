@@ -24,11 +24,11 @@ export async function requestRelease(options: { config: string; input: string; r
     return { ...result, requestId };
   } catch (error) { failure(error); }
 }
-export async function releaseState(options: { config: string; task: string }) {
+export async function releaseState(options: { config: string; task: string; ancestryCheck?: string }) {
   try {
     if (!options.task || options.task.length > 256) throw new ReleaseError("Provide the task identity.");
     const { caller, client } = await messageContext(resolve(options.config));
-    return releaseResultSchemas.state.parse(await client.query(releaseApi.state, { verificationId: caller.verificationRequestId, taskId: options.task }));
+    return releaseResultSchemas.state.parse(await client.query(releaseApi.state, { verificationId: caller.verificationRequestId, taskId: options.task, ...(options.ancestryCheck ? { ancestryCheckId: options.ancestryCheck } : {}) }));
   } catch (error) { failure(error); }
 }
 export async function releaseStatus(options: { config: string; requestId: string }) {
