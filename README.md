@@ -479,3 +479,30 @@ non-null `cursor` with `--cursor`, even after an empty page. If the listing chan
 restart without a cursor. Review items precede reply items; an empty review page
 can have a continuation to the reply page. A final answer removes its reply item;
 task completion alone does not. This metadata view grants no task-control authority.
+
+### Force-release obligation review
+
+`force-release-preview --task TASK --config PROFILE` is read-only metadata
+pagination. Its cursor does not establish that every page was reviewed.
+
+Start a durable review with `force-release-review --task TASK --request-file JOURNAL
+--config PROFILE`. Read the returned page, then invoke `force-release-review-ack
+--review REVIEW_ID --generation GENERATION --page-digest DIGEST --config PROFILE`
+with that page's returned fields. Each acknowledgement returns the next page;
+acknowledge empty pages too. The final acknowledgement returns `reviewed`.
+There is no automatic acknowledgement. Retrying the same acknowledgement recovers
+its exact successor page. Repeating the begin command returns the original first
+page; it does not advance the review. `state` describes overall review progress,
+including acknowledgements already accepted from another invocation by this actor.
+
+Changed work, obligations or authority invalidate the review. Discard an unused
+review with `force-release-review-discard --review REVIEW_ID --config PROFILE`;
+remaining cleanup continues automatically. Start a new review with a new journal
+when the old scope is stale. Journals contain the request identity and scope digest,
+not task bodies, tickets, or credentials.
+
+The corresponding `operator-force-release-review`, `operator-force-release-review-ack`
+and `operator-force-release-review-discard` commands require an explicit
+`--operator-profile PROFILE` with `sessions.forceRelease`. Operator and session
+reviews cannot be exchanged. These commands record review only; force-release
+acceptance, unavailable-state effects and physical close execution remain unfinished.

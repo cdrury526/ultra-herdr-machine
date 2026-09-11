@@ -1,3 +1,4 @@
+import { addForceReviewCommands } from "./forceReview";
 import { previewForceRelease, previewOperatorForceRelease } from "../release/preview";
 import { checkReleaseAuthority, discardReleaseAuthority } from "../release/ancestry";
 import { requestOperatorRelease, operatorReleaseState, operatorReleaseStatus } from "../release/operator";
@@ -20,6 +21,7 @@ export function addReleaseCommands(program: Command) {
     .requiredOption("--request-id <id>", "Operator's release request identity")
     .action(async options => { console.log(JSON.stringify(await operatorReleaseStatus(options))); });
   const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
+  addForceReviewCommands(program, config);
   program.command("force-release-preview").description("Inspect active work and unanswered requests in bounded pages; no force release is accepted.")
     .requiredOption("--task <id>", "Latest task for an owned worker session")
     .option("--cursor <value>", "Continue the returned cursor; restart if stale, including after a changed obligation")
