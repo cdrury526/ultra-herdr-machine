@@ -504,5 +504,37 @@ not task bodies, tickets, or credentials.
 The corresponding `operator-force-release-review`, `operator-force-release-review-ack`
 and `operator-force-release-review-discard` commands require an explicit
 `--operator-profile PROFILE` with `sessions.forceRelease`. Operator and session
-reviews cannot be exchanged. These commands record review only; force-release
-acceptance, unavailable-state effects and physical close execution remain unfinished.
+reviews cannot be exchanged. Reviewing alone never requests release.
+
+After the final acknowledgement, run:
+
+```bash
+herdr-cli force-release --review REVIEW_ID --input force-release.json --request-file force-request.json --config PROFILE
+```
+
+The JSON input contains `reason` and three notice selections: `executionNotice`,
+`responseNotice`, and `closedNotice`. Each selection contains `briefKey`, `values`,
+`bundleValues`, and optional `attributes`. For the initial catalog the brief keys
+are `notice-execution-unavailable`, `notice-response-unavailable`, and
+`notice-session-released`; supply `values: {"payload": {}}` and the bundle slots
+required by the selected catalog. The backend supplies identity, reason and
+unavailable/confirmed-state fields. Do not supply `requestId`; the CLI journals it.
+Each notice must validate against its task or original question's pinned release.
+
+The command advances bounded preparation, then atomically accepts the audited
+release, execution-unavailable state, response-unavailable incoming requests and
+requester/supervisor notices. It preserves unfinished tasks, submissions, child
+execution and outgoing requests. Receiving notices is informational. Late valid
+replies remain evidence and cannot resolve an unavailable response obligation.
+`release-state` shows the execution-unavailable fact.
+
+Retry with the same review, input and request file after interruption. If an
+unaccepted preparation's progress lease expires, automatic cleanup frees the
+coordinator; perform a new review with new journals. Changed scope or invalid
+pinned notice contracts also require discarding the unused review and starting
+a fresh one. Accepted review and decision records remain protected.
+
+`operator-force-release` provides the same operation with an explicit
+`--operator-profile PROFILE` and that operator's own completed review.
+A `closing` result is a durable close intent. Actual machine pane closure and its
+confirmation are Phase 05 work; no physical closure is performed by this CLI.

@@ -1,3 +1,4 @@
+import { forceRelease } from "../release/force";
 import type { Command } from "commander";
 import { beginForceReleaseReview, acknowledgeForceReleaseReview, discardForceReleaseReview } from "../release/forceReview";
 export function addForceReviewCommands(program: Command, config: string) {
@@ -6,6 +7,12 @@ export function addForceReviewCommands(program: Command, config: string) {
     const authenticate = (command: Command) => operator
       ? command.requiredOption("--operator-profile <file>", "Explicit protected operator profile with sessions.forceRelease")
       : command.option("--config <file>", "Protected machine profile", config);
+    authenticate(program.command(operator ? "operator-force-release" : "force-release")
+      .description("Force release after a completed review, preserving unfinished work and notifying affected participants. A closing result does not confirm physical closure.")
+      .requiredOption("--review <id>", "Completed acknowledged review")
+      .requiredOption("--input <file>", "JSON reason and typed unavailable/closed notice slots")
+      .requiredOption("--request-file <file>", "Protected retry journal; reuse with unchanged input"))
+      .action(async options => { console.log(JSON.stringify(await forceRelease(options))); });
     authenticate(program.command(prefix).description("Start/replay an obligation review and display its first page; no release is requested.")
       .requiredOption("--task <id>", "Latest task for the worker session")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for this review"))
