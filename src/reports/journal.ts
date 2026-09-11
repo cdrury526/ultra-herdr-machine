@@ -8,7 +8,7 @@ const limits = { maxBytes: 4096, maxDepth: 8, maxNodes: 64 };
 const reportScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.enum(["submission", "failure_report"]), assignmentMessageId: z.string(), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const failureScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
-  kind: z.literal("parent_failure"), taskId: z.string(), ownerEpoch: z.number().int().positive(), revision: z.number().int().positive(),
+  kind: z.enum(["parent_failure", "parent_stop"]), taskId: z.string(), ownerEpoch: z.number().int().positive(), revision: z.number().int().positive(),
   inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise", "extend"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
@@ -42,8 +42,8 @@ export async function reportRequest(path: string, scope: ReportScope | FailureSc
   });
 }
 
-export function readFailureRequest(path: string) {
+export function readFailureRequest(path: string, kind: "failure" | "stop" = "failure") {
   const saved = journalShape.parse(parseJson(readReportFile(path, limits.maxBytes, true), limits, "task.failureJournal"));
-  if (saved.scope.kind !== "parent_failure") throw new ReportError("Expected a parent failure retry journal.");
+  if (saved.scope.kind !== `parent_${kind}`) throw new ReportError(`Expected a parent ${kind} retry journal.`);
   return { requestId: saved.requestId, scope: saved.scope };
 }

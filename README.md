@@ -3,7 +3,7 @@
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
-verification. Message receipt, retained history, typed worker reports and parent revisions, completion, feedback and failure are available. Complete
+verification. Message receipt, retained history, typed worker reports and parent cooperative stops, revisions, completion, feedback and failure are available. Complete
 enrollment/system installation, dispatch, other parent decisions and the visible runtime
 are not yet available.
 
@@ -365,3 +365,29 @@ pause. Receipt of its notice grants no additional time. An already expired runni
 task currently refuses extension until its due subtree stop can be accepted; that
 expiry integration and explicit stop/resume commands remain in development. Include
 `--config` when using a nondefault machine profile.
+
+### Cooperative subtree stop
+
+The current task owner can request a nonterminal stop for a task and its unfinished
+descendants:
+
+```bash
+herdr-cli stop --task <task-id> --owner-epoch 1 --revision 1 \
+  --input /secure/stop-briefs.json --request-file /secure/stop-request.json
+herdr-cli stop-status --request-file /secure/stop-request.json
+```
+
+The input contains `root` and `descendants`; each has `stopBriefKey`, `stopValues`
+and `stopBundleValues`. For the seeded catalog, use brief `stop` and supply
+`stopValues.payload.reason`, with bundle slots from the selected pinned catalog.
+The backend supplies the stop cause. Task owners may inspect the current expected
+owner epoch and revision through `review-state`.
+
+`preparing` means the request has not yet taken effect. On acceptance, delegation
+is blocked throughout the unfinished subtree. Running time continues until each
+worker confirms its stop ticket with `receive`; tasks, reviews and session reservations
+remain retained. This is cooperative: it does not interrupt current tooling or close
+panes. Reuse the original input and request journal after interruption or when state
+is `awaiting_authorization`. Status is read-only, and failure/stop journals are distinct.
+An extension does not resume stopped work. Explicit resume and automatic execution
+expiry are still being implemented.
