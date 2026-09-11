@@ -595,3 +595,12 @@ operator stop acceptance, worker receipt, explicit resume/receipt, failure accep
 and same-intent recovery. Caller/runtime are modeled and operator identity uses
 admin impersonation. Compiled real-JWT acceptance, operator authorization recovery/
 revocation faults, descendant combinations and expiry-precedence races remain pending.
+
+API/CLI 0.32.0 adds `operator-nudge --operator-profile <file> --input <file>
+--request-file <file>`. Input supplies `requestMessageId`, `briefKey`, `values` and
+`bundleValues`; omit `kind` and `requestId`. The operator needs takeover/review
+capabilities and participation covering the original and new message. The backend
+selects the recipient and enforces the original request's shared cooldown. Receipt
+is informational and preserves response clocks. Reuse the protected journal for an
+unchanged retry. Domain acceptance uses modeled callers; compiled real-JWT acceptance
+of this command remains pending.

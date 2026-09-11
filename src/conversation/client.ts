@@ -19,12 +19,13 @@ export async function sendConversation(kind: "question" | "reply" | "nudge", opt
     if (!input || typeof input !== "object" || Array.isArray(input) || Object.hasOwn(input, "requestId") || Object.hasOwn(input, "kind"))
       throw new ConversationError("Provide typed conversation input without kind or requestId; the CLI supplies them.");
     if (options.operatorProfile) {
-      if (kind !== "reply") throw new ConversationError("Operator conversation currently supports transferred replies.");
+      if (kind === "question") throw new ConversationError("Operator conversation supports replies and nudges.");
       const profile = await loadProfile(config, "operator");
       const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, operatorId: profile.principalId,
-        kind: "operator_reply", inputDigest: (await jsonDigest(input, reportLimits, "task.conversation")).value });
+        kind: kind === "reply" ? "operator_reply" : "operator_nudge", inputDigest: (await jsonDigest(input, reportLimits, "task.conversation")).value });
       const client = clientFor(profile, (url, init) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) }));
-      const accepted = conversationResultSchemas.operatorReply.parse(await client.mutation(conversationApi.operatorReply,
+      const operation = kind === "reply" ? "operatorReply" : "operatorNudge";
+      const accepted = conversationResultSchemas[operation].parse(await client.mutation(conversationApi[operation],
         { input: canonicalJson({ ...input, kind, requestId }, reportLimits, "task.conversation") }));
       return { ...accepted, requestId };
     }

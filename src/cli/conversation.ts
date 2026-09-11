@@ -19,6 +19,11 @@ export function addConversationCommands(program: Command) {
     .requiredOption("--input <file>", "Typed reply input and slots; omit kind and requestId")
     .requiredOption("--request-file <file>", "Protected journal; reuse for unchanged retries")
     .action(async (options: ConversationOptions) => { console.log(JSON.stringify(await sendConversation("reply", options))); });
+  program.command("operator-nudge").description("Nudge an authorized message recipient without changing its clocks or cooldown.")
+    .requiredOption("--operator-profile <file>", "Explicit operator profile with task participation")
+    .requiredOption("--input <file>", "Typed nudge input and slots; omit kind and requestId")
+    .requiredOption("--request-file <file>", "Protected journal; reuse for unchanged retries")
+    .action(async (options: ConversationOptions) => { console.log(JSON.stringify(await sendConversation("nudge", options))); });
   program.command("question-state").description("Inspect your question's response obligation without receiving content or changing clocks.")
     .requiredOption("--request <message-id>", "Immutable question message identity")
     .option("--config <file>", "Protected machine profile", config)
