@@ -745,3 +745,11 @@ digest must match that message. Normal source-content authority or an explicit
 ancestor/received-source packet proof is required. The envelope keeps the typed
 reference while retention protects its source message. Citing it grants no current
 reply or delivery status. Standalone typed-reference retrieval remains pending.
+
+
+Task decision citations use `{kind:"decision",id:DECISION_ID,digest?}`. The optional
+digest identifies the canonical decision, while access and retention follow its
+accepted notice. Failure/stop decisions become citable after activation, including
+before physical copy. Unpublished preparations are unavailable. This covers task
+completion/failure/stop/extension/replacement decisions; release/ownership decision
+citations and standalone typed-reference retrieval remain pending.
