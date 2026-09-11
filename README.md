@@ -228,6 +228,18 @@ packet, released-session or operator modes. They confer no task control or recei
 effects. Use `history authority-discard --check <id>` after investigation to discard
 unused proof material (proofs referenced by accepted control operations are retained).
 
+`history tasks --task <parent-id>` lists one page of current direct children.
+Use `--scope descendants --task <root-id>` for a root's descendants (the root itself
+is excluded). Current owners, proven ancestors (`--ancestry-check`) and operators
+with `--operator-profile` / history.manage can investigate their scope. A live
+supervisor without parent-wide authority sees only direct children it currently owns,
+including individually taken-over children under someone else’s assignment; it cannot list an
+arbitrary root or siblings. Released/former-participant grants authorize immutable
+history, not current hierarchy. Pages report lineage, current owner and lifecycle
+state, without message bodies. Continue `--cursor` even after an empty page; restart
+if membership or authority changes. `--limit` is bounded by deployment policy.
+
+
 If the server rejects a stale cursor, restart without it. A listing's first page
 fixes its upper sequence boundary; start a new listing to include later messages.
 

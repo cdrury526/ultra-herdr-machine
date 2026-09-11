@@ -1,3 +1,4 @@
+import { listTaskHierarchy } from "../history/tasks";
 import { checkReleaseAuthority, discardReleaseAuthority } from "../release/ancestry";
 import { listMessageHistory, type HistoryListOptions } from "../history/list";
 import { addHistoryCleanupCommands } from "./historyCleanup";
@@ -17,6 +18,15 @@ export function addHistoryCommands(program: Command) {
     .requiredOption("--check <id>", "Ancestry check identity")
     .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
     .action(async options => { console.log(JSON.stringify(await discardReleaseAuthority(options))); });
+  history.command("tasks").description("List current direct children or root descendants within current authority.")
+    .requiredOption("--task <id>", "Parent task, or root task for descendants")
+    .option("--scope <scope>", "children or descendants", "children")
+    .option("--ancestry-check <id>", "Verified ancestor proof for the parent task")
+    .option("--cursor <cursor>", "Continue a page; restart when scope or membership changes")
+    .option("--limit <count>", "Page size up to the deployment's configured bound")
+    .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--operator-profile <file>", "Explicit operator profile with history.manage")
+    .action(async options => { console.log(JSON.stringify(await listTaskHierarchy(options))); });
   addHistoryCleanupCommands(history);
   addLocalCleanupCommands(history);
   history.command("list").description("List one authorized page of immutable message metadata in task order.")
