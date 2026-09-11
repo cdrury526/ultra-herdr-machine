@@ -389,5 +389,35 @@ worker confirms its stop ticket with `receive`; tasks, reviews and session reser
 remain retained. This is cooperative: it does not interrupt current tooling or close
 panes. Reuse the original input and request journal after interruption or when state
 is `awaiting_authorization`. Status is read-only, and failure/stop journals are distinct.
-An extension does not resume stopped work. Explicit resume and automatic execution
-expiry are still being implemented.
+An extension does not resume stopped work. Explicit per-task resume is available below; automatic execution expiry is still
+being implemented.
+
+### Resume one stopped task
+
+```bash
+herdr-cli review-state --task <task-id>
+herdr-cli resume --input /secure/resume.json --request-file /secure/resume-request.json
+```
+
+The input includes `taskId`, `expectedOwnerEpoch`, `expectedRevision`,
+`expectedStopEpoch`, `briefKey`, `values`, and `bundleValues`. For the seeded catalog,
+select `resume` and supply `values.payload.reason` plus its required bundle slots.
+The CLI supplies the durable request identity. Reuse the same input and request
+journal after interruption.
+
+`review-state` exposes stop `epoch`, `receivedEpoch`, and `resumedThroughEpoch`.
+A pending resume includes its message identity, stop epoch, revision and `superseded`
+flag. That flag reports whether its saved state has changed; it is not a readiness
+check or authorization. Terminal tasks omit pending resume metadata.
+
+Resume requires the current stop and assignment to be received, positive remaining
+time, a verified current worker binding, no pending review/revision, and a parent
+that is nonterminal, unstopped and has available time. Acceptance leaves the stop
+and clock unchanged. Worker `receive` rechecks those conditions and restarts only
+that task's remaining time. Resume parent tasks before their children; descendants
+remain stopped until separately resumed. A changed stop, assignment, binding, review
+or clock generation invalidates an unread resume. An extension changes the clock
+generation: issue a fresh explicit resume after extending. Use a new request file
+for a replacement resume when the old pending snapshot is superseded; the original
+journal always recovers the original message. Existing received-ticket
+retries retain their original artifact and receipt.

@@ -22,7 +22,7 @@ import metadata from "../../package.json";
 
 const program = new Command()
   .name("herdr-cli")
-  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Cooperative stops, allowance extensions, typed questions/replies, authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; dispatch remains in development.`)
+  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Cooperative stops/resumes, allowance extensions, typed questions/replies, authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; dispatch remains in development.`)
   .version(metadata.version)
   .showHelpAfterError();
 

@@ -11,7 +11,7 @@ const failureScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.str
   kind: z.enum(["parent_failure", "parent_stop"]), taskId: z.string(), ownerEpoch: z.number().int().positive(), revision: z.number().int().positive(),
   inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
-  kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise", "extend"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+  kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise", "extend", "resume"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const conversationScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("conversation"), operation: z.enum(["question", "reply"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);

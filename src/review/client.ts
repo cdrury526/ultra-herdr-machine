@@ -10,7 +10,7 @@ function failure(error: unknown): never {
   if (error instanceof ContextError || error instanceof ReviewError) throw error;
   throw new ReviewError(reportFailure(error).message.replace(/\breport\b/gi, "parent review"));
 }
-export async function sendReview(operation: "complete" | "feedback" | "revise" | "extend", options: ReviewOptions) {
+export async function sendReview(operation: "complete" | "feedback" | "revise" | "extend" | "resume", options: ReviewOptions) {
   try {
     const config = resolve(options.config), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
     if (requestFile === config || requestFile === inputFile) throw new ReviewError("Use a separate protected retry journal.");
