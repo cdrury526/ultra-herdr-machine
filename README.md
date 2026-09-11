@@ -78,7 +78,7 @@ It requires a ready enrolled verifier; credential registration alone does not ma
 that verifier available. Complete runtime installation and real harness acceptance
 are still in progress. The task CLI does not connect to Herdr or choose panes.
 
-This build consumes public API 0.8.0 / protocol 8. It includes generated context
+This build consumes public API 0.9.0 / protocol 9. It includes generated context
 references and response validators. The compiled caller smoke was exercised against
 a live backend with modeled terminal observations; that is not actual harness
 launch or system-pane acceptance.
@@ -150,7 +150,7 @@ effects. Failed or revoked receives print no message body, artifact path or tick
 
 The current Phase 04 backend supports live-session assignment, submission, failure-report, current review-feedback and completion-notice receipt. Historical message inspection is available below; other ticket receipt effects remain in implementation;
 dispatch, parent decisions and automatic worker launch are not available yet.
-The API uses endpoint protocol 8; immutable stored message envelopes retain revision 4.
+The API uses endpoint protocol 9; immutable stored message envelopes retain revision 4.
 
 `scripts/receive-smoke.ts` compiles to a standalone smoke covering local publication
 and simulated transport interruptions. Private deployment tooling additionally
@@ -210,3 +210,11 @@ The public parent command surface and subtree failure handling remain in progres
 Receive uses stable logical delivery references for new messages and preserves native
 references for legacy deliveries. Confirmation keeps the same reference across
 backend materialization; ticket format and stored envelope revision are unchanged.
+
+`history list --task <id>` returns one page of authorized message metadata in task
+sequence order. Pass the returned cursor with `--cursor` for the next page, or use
+`--limit` to request a smaller page. The same live-session, released-session and
+operator profile modes as `history message` apply. Listing creates no artifact or
+receipt. Use `history message --task <id> --message <id>` to verify a listed body.
+If the server rejects a stale cursor, restart without it. A listing's first page
+fixes its upper sequence boundary; start a new listing to include later messages.
