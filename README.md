@@ -342,3 +342,26 @@ body-free retry journal before sending. Reuse the same input and journal after a
 lost response; a fresh journal represents a new intent. Changed input, operation,
 deployment, or caller conflicts with an existing journal. Response timers are durable
 records; automated overdue reminders/escalation remain in development.
+
+### Execution allowance
+
+`budget --task <task-id>` returns a timestamped snapshot for the current task owner:
+`asOfMs`, `allowanceMs`, stored `spentMs`, `accruedSpentMs` including elapsed running
+time, `remainingMs`, optional `runningSince`, clock generation, owner/revision
+expectations, stop epochs, terminal outcome and the original pinned extension bounds.
+All durations are milliseconds. Inspection does not expire execution or start/stop a
+clock, and the snapshot grants no permission to a later operation.
+
+`extend --input extension.json --request-file extension-request.json` takes `taskId`,
+`expectedOwnerEpoch`, `expectedRevision`, positive integer `addedAllowanceMs`,
+`briefKey`, `values`, `bundleValues`, and optional `attributes`. The initial brief is
+`extension`, with `values.payload.reason` as text. Supply required pinned bundle
+inputs and omit `requestId`; the CLI saves its generated identity before acceptance.
+Use the same protected journal and unchanged input after a lost response.
+
+Extension checks the task's original per-increment and optional cumulative bounds.
+It changes allowance once, preserves elapsed time and never clears a stop or review
+pause. Receipt of its notice grants no additional time. An already expired running
+task currently refuses extension until its due subtree stop can be accepted; that
+expiry integration and explicit stop/resume commands remain in development. Include
+`--config` when using a nondefault machine profile.

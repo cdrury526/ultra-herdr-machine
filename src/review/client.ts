@@ -10,13 +10,13 @@ function failure(error: unknown): never {
   if (error instanceof ContextError || error instanceof ReviewError) throw error;
   throw new ReviewError(reportFailure(error).message.replace(/\breport\b/gi, "parent review"));
 }
-export async function sendReview(operation: "complete" | "feedback" | "revise", options: ReviewOptions) {
+export async function sendReview(operation: "complete" | "feedback" | "revise" | "extend", options: ReviewOptions) {
   try {
     const config = resolve(options.config), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
     if (requestFile === config || requestFile === inputFile) throw new ReviewError("Use a separate protected retry journal.");
     const input = parseJson(readReportFile(inputFile), reportLimits, "task.parentReview");
     if (!input || typeof input !== "object" || Array.isArray(input) || typeof input.taskId !== "string" || Object.hasOwn(input, "requestId"))
-      throw new ReviewError("Provide a taskId and typed parent review input. The CLI generates requestId.");
+      throw new ReviewError("Provide a taskId and typed parent operation input. The CLI generates requestId.");
     const { profile, caller, client } = await context(config);
     const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, machineId: caller.machineId,
       callerSessionId: caller.sessionId, kind: "parent_review", operation,
@@ -26,10 +26,13 @@ export async function sendReview(operation: "complete" | "feedback" | "revise", 
     return { ...accepted, requestId };
   } catch (error) { failure(error); }
 }
-export async function reviewState(options: { config: string; task: string }) {
+async function ownerState(operation: "state" | "budget", options: { config: string; task: string }) {
   try {
     if (!options.task || options.task.length > 256) throw new ReviewError("Provide the task identity.");
     const { caller, client } = await context(resolve(options.config));
-    return reviewResultSchemas.state.parse(await client.query(reviewApi.state, { verificationId: caller.verificationRequestId, taskId: options.task }));
+    return reviewResultSchemas[operation].parse(await client.query(reviewApi[operation], { verificationId: caller.verificationRequestId, taskId: options.task }));
   } catch (error) { failure(error); }
 }
+
+export const reviewState = (options: { config: string; task: string }) => ownerState("state", options);
+export const budgetState = (options: { config: string; task: string }) => ownerState("budget", options);
