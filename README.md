@@ -525,7 +525,9 @@ A supplied stale or wrong proof fails even if another grant could permit the sou
 Proofs authorize citation, not the destination task operation, its recipient, or
 reply/control authority. They are included in the request digest; an unchanged
 accepted retry returns the original result rather than creating a new citation.
-Staged failure input does not yet accept these proofs.
+For staged failure, put `referenceAuthorities` inside each applicable `root` or
+`descendants` slot object, beside `noticeValues`. Proof authority must remain valid
+until activation; revocation invalidates prepared drafts.
 
 For a new ancestor question or nudge, add `"ancestryCheckId": "VERIFIED_CHECK_ID"`
 to ordinary `ask`/`nudge` input. The proof must target that conversation's task and
