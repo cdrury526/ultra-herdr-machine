@@ -4,9 +4,10 @@ import { join } from "node:path";
 import { sendConversation, questionState, type ConversationOptions } from "../conversation/client";
 export function addConversationCommands(program: Command) {
   const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
-  for (const [command, kind] of [["ask", "question"], ["reply", "reply"]] as const) {
+  for (const [command, kind] of [["ask", "question"], ["reply", "reply"], ["nudge", "nudge"]] as const) {
     program.command(command).description(kind === "question"
       ? "Send a typed task question; execution continues and expected-reply timing starts on receipt."
+      : kind === "nudge" ? "Send an authorized update nudge; the original request cooldown and clocks remain in force."
       : "Send a correlated answer; only a current final reply resolves the response obligation.")
       .requiredOption("--input <file>", "Typed JSON input and brief slots; omit kind and requestId")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")

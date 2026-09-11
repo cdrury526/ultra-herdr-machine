@@ -343,6 +343,18 @@ lost response; a fresh journal represents a new intent. Changed input, operation
 deployment, or caller conflicts with an existing journal. Response timers are durable
 records; automated overdue reminders/escalation remain in development.
 
+Use `nudge --input nudge.json --request-file nudge-request.json` to ask an
+already authorized request recipient for an update. Input contains
+`requestMessageId`, `briefKey`, `values`, `bundleValues`, and optional `attributes`.
+For the initial `nudge` brief, `values.payload` contains that same
+`requestMessageId` and `text`. Refer to the original addressed message, not an
+earlier nudge, reply or system reminder. The backend resolves its recipient and applies
+the original request's pinned cooldown (five minutes in the initial catalog),
+shared across senders and brief choices. An unopened earlier nudge does not prevent
+a new one after cooldown. Nudges do not reset receipt/reply deadlines, resolve
+obligations or change task ownership. Current direct-participant authority applies;
+ancestor and transferred authority remain in development.
+
 ### Execution allowance
 
 `budget --task <task-id>` returns a timestamped snapshot for the current task owner:

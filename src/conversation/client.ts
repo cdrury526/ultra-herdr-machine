@@ -10,13 +10,13 @@ function failure(error: unknown): never {
   if (error instanceof ContextError || error instanceof ConversationError) throw error;
   throw new ConversationError(reportFailure(error).message.replace(/\breport\b/gi, "conversation"));
 }
-export async function sendConversation(kind: "question" | "reply", options: ConversationOptions) {
+export async function sendConversation(kind: "question" | "reply" | "nudge", options: ConversationOptions) {
   try {
     const config = resolve(options.config), inputFile = resolve(options.input), requestFile = resolve(options.requestFile);
     if (requestFile === config || requestFile === inputFile) throw new ConversationError("Use a separate protected retry journal.");
     const input = parseJson(readReportFile(inputFile), reportLimits, "task.conversation");
     if (!input || typeof input !== "object" || Array.isArray(input) || Object.hasOwn(input, "requestId") || Object.hasOwn(input, "kind"))
-      throw new ConversationError("Provide typed question/reply input without kind or requestId; the CLI supplies them.");
+      throw new ConversationError("Provide typed conversation input without kind or requestId; the CLI supplies them.");
     const { profile, caller, client } = await messageContext(config);
     const requestId = await reportRequest(requestFile, { deploymentUrl: profile.convexUrl, machineId: caller.machineId,
       callerSessionId: caller.sessionId, kind: "conversation", operation: kind,

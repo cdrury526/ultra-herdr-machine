@@ -13,7 +13,7 @@ const failureScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.str
 const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise", "extend", "resume"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const conversationScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
-  kind: z.literal("conversation"), operation: z.enum(["question", "reply"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+  kind: z.literal("conversation"), operation: z.enum(["question", "reply", "nudge"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);
 const journalShape = z.object({ version: z.literal(1), requestId: z.string().uuid(), scope: scopeShape }).strict();
 export type ConversationScope = z.infer<typeof conversationScopeShape>;
