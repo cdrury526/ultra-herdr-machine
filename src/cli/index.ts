@@ -20,7 +20,7 @@ import metadata from "../../package.json";
 
 const program = new Command()
   .name("herdr-cli")
-  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated receipt, history, worker reports and parent completion, feedback and failure are available; dispatch remains in development.`)
+  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; dispatch remains in development.`)
   .version(metadata.version)
   .showHelpAfterError();
 

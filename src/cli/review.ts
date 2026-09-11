@@ -4,11 +4,12 @@ import { join } from "node:path";
 import { sendReview, reviewState, type ReviewOptions } from "../review/client";
 export function addReviewCommands(program: Command) {
   const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
-  for (const command of ["complete", "feedback"] as const) {
+  for (const command of ["complete", "feedback", "revise"] as const) {
     program.command(command).description(command === "complete"
       ? "Accept the current submission as completed; retain the worker session."
-      : "Send same-contract corrections; work resumes when the worker receives current feedback.")
-      .requiredOption("--input <file>", "Typed JSON input including task, submission, expected epochs and brief slots; omit requestId")
+      : command === "feedback" ? "Send same-contract corrections; work resumes when the worker receives current feedback."
+      : "Issue a full pinned assignment revision; one revision may await receipt at a time.")
+      .requiredOption("--input <file>", "Typed JSON input including task, expected epochs and brief slots; review commands also require submission; omit requestId")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
       .option("--config <file>", "Protected machine profile", config)
       .action(async (options: ReviewOptions) => { console.log(JSON.stringify(await sendReview(command, options))); });

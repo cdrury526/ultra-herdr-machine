@@ -3,7 +3,7 @@
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
-verification. Message receipt, retained history, typed worker reports and parent completion, feedback and failure are available. Complete
+verification. Message receipt, retained history, typed worker reports and parent revisions, completion, feedback and failure are available. Complete
 enrollment/system installation, dispatch, other parent decisions and the visible runtime
 are not yet available.
 
@@ -284,3 +284,26 @@ the task reservation while retaining the worker session and pane. A changed revi
 owner, revision or submission rejects. Unchanged retries recover the same accepted
 message after a lost response; changed input or a different operation requires a new
 journal. Journals and parent-command diagnostics contain no message bodies or secrets.
+
+Use `revise` for a full assignment revision within the task's existing catalog:
+
+```sh
+herdr-cli revise --input /secure/revision.json --request-file /secure/revision-request.json
+herdr-cli review-state --task TASK_ID
+```
+
+Revision input contains `taskId`, `expectedOwnerEpoch`, `expectedRevision`,
+`briefKey`, `values`, `bundleValues`, and optional `attributes`; omit `requestId`.
+For the initial catalog, select `briefKey: "revision"` and supply all assignment
+payload fields plus `changeReason`. This is a full replacement, not a partial patch.
+Reply schemas, task identity, child assignments and execution allowance stay pinned.
+One revision may await receipt at a time; `review-state.pendingRevision` identifies
+its immutable message. The field is absent after receipt or terminal disposition.
+
+A revision issued during review resumes remaining execution time only on receipt,
+unless stopped or exhausted. Running tooling time continues across revision receipt.
+A first revision may replace an unread initial assignment; retrieve the new revision
+instead of its obsolete initial ticket. The worker then submits against the revision's
+message ID. Older reports remain history and cannot satisfy the revised assignment.
+Unchanged retries use the same protected request file; changing operation or input
+conflicts with that journal.

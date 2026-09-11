@@ -11,7 +11,7 @@ const failureScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.str
   kind: z.literal("parent_failure"), taskId: z.string(), ownerEpoch: z.number().int().positive(), revision: z.number().int().positive(),
   inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
-  kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+  kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape]);
 const journalShape = z.object({ version: z.literal(1), requestId: z.string().uuid(), scope: scopeShape }).strict();
 export type ReportScope = z.infer<typeof reportScopeShape>;
