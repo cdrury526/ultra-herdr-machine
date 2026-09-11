@@ -1,3 +1,5 @@
+import { addConversationCommands } from "./conversation";
+import { ConversationError } from "../conversation/client";
 import { addReviewCommands } from "./review";
 import { ReviewError } from "../review/client";
 import { addFailureCommands } from "./failure";
@@ -20,7 +22,7 @@ import metadata from "../../package.json";
 
 const program = new Command()
   .name("herdr-cli")
-  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; dispatch remains in development.`)
+  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Typed questions/replies, authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; dispatch remains in development.`)
   .version(metadata.version)
   .showHelpAfterError();
 
@@ -33,12 +35,13 @@ addHistoryCommands(program);
 addReportCommands(program);
 addFailureCommands(program);
 addReviewCommands(program);
+addConversationCommands(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();
 } catch (error) {
   // Avoid backend exception bodies, validator inputs and tokens in CLI diagnostics.
-  const message = (error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError || error instanceof ReportError || error instanceof FailureError || error instanceof ReviewError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
+  const message = (error instanceof CatalogError || error instanceof ReceiveError || error instanceof HistoryError || error instanceof ReportError || error instanceof FailureError || error instanceof ReviewError || error instanceof ConversationError) ? error.message : error instanceof ContextError ? `${error.code}: ${error.message}`
     : error instanceof Error && error.constructor === Error ? error.message
     : "Operation failed. Check command inputs and current authorization.";
   console.error(message);

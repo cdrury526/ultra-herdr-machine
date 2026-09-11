@@ -1,17 +1,11 @@
 import { resolve } from "node:path";
 import { reviewApi, reviewResultSchemas, canonicalJson, jsonDigest, parseJson } from "@ultra-herdr/api";
-import { loadProfile, clientFor } from "../auth/client";
-import { resolveCaller } from "../context/resolve";
+import { messageContext as context } from "../reports/context";
 import { ContextError } from "../context/errors";
 import { readReportFile, reportLimits, reportFailure } from "../reports/input";
 import { reportRequest } from "../reports/journal";
 export class ReviewError extends Error {}
 export interface ReviewOptions { config: string; input: string; requestFile: string }
-async function context(config: string) {
-  const profile = await loadProfile(config, "machine"), caller = await resolveCaller(config);
-  if (profile.machineId !== caller.machineId) throw new ReviewError("Machine profile changed during verification; retry.");
-  return { profile, caller, client: clientFor(profile, (url, init) => fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20_000) })) };
-}
 function failure(error: unknown): never {
   if (error instanceof ContextError || error instanceof ReviewError) throw error;
   throw new ReviewError(reportFailure(error).message.replace(/\breport\b/gi, "parent review"));

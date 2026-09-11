@@ -12,14 +12,17 @@ const failureScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.str
   inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("parent_review"), operation: z.enum(["complete", "feedback", "revise"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
-const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape]);
+const conversationScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
+  kind: z.literal("conversation"), operation: z.enum(["question", "reply"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+const scopeShape = z.union([reportScopeShape, failureScopeShape, reviewScopeShape, conversationScopeShape]);
 const journalShape = z.object({ version: z.literal(1), requestId: z.string().uuid(), scope: scopeShape }).strict();
+export type ConversationScope = z.infer<typeof conversationScopeShape>;
 export type ReportScope = z.infer<typeof reportScopeShape>;
 export type ReviewScope = z.infer<typeof reviewScopeShape>;
 export type FailureScope = z.infer<typeof failureScopeShape>;
 
 /** A fresh journal is a new intent; identical retries reuse its UUID across process loss. No bodies or tickets are stored. */
-export async function reportRequest(path: string, scope: ReportScope | FailureScope | ReviewScope) {
+export async function reportRequest(path: string, scope: ReportScope | FailureScope | ReviewScope | ConversationScope) {
   return withCredentialLock(path, async lockedPath => {
     let exists = true;
     try { lstatSync(lockedPath); } catch (error) {

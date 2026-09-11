@@ -307,3 +307,38 @@ instead of its obsolete initial ticket. The worker then submits against the revi
 message ID. Older reports remain history and cannot satisfy the revised assignment.
 Unchanged retries use the same protected request file; changing operation or input
 conflicts with that journal.
+
+### Task questions and replies
+
+Use `ask --input question.json --request-file question-request.json` to send a
+question to an authorized participant in the task. Questions can refer to completed
+tasks and do not pause, restart, or reopen execution. The initial interface supports
+direct task participants; ancestor/packet and transferred response authority remain
+in development. Include `--config` when using a nondefault machine profile.
+
+Question input contains `taskId`, `recipientSessionId`, `briefKey`, `values`,
+`bundleValues`, and optional `attributes`. For the initial `question` brief,
+`values.payload` contains `question` (text), `context` (authorized reference array),
+`purpose` (`clarification` or `context`), and `expectsReply` (boolean). Supply any
+bundle inputs required by the pinned catalog. The CLI supplies `kind` and `requestId`;
+do not include them in the file.
+
+`question-state --request <question-message-id>` returns response metadata to the
+requester or current responder. `obligation: null` means the question is one-way.
+An open obligation has a `generation`; `receivedAt` and `dueAt` appear after first
+confirmed receipt. Inspection does not receive content or change clocks.
+
+Use `reply --input reply.json --request-file reply-request.json`. Reply input contains
+`requestMessageId`, `expectedGeneration` from question-state, `values`,
+`bundleValues`, and optional `attributes`. For the initial pinned reply brief,
+`values.payload` contains the same `requestMessageId`, `answer` (text), `evidence`
+(`summary` and authorized `references`), and `final` (boolean). Interim replies leave
+the obligation open. A valid current final reply resolves it without completing the
+task. Later valid answers remain historical evidence. Retrieve either message with
+the ordinary `receive` command and its returned delivery identity.
+
+Both accepting commands parse a bounded typed input file and save a protected,
+body-free retry journal before sending. Reuse the same input and journal after a
+lost response; a fresh journal represents a new intent. Changed input, operation,
+deployment, or caller conflicts with an existing journal. Response timers are durable
+records; automated overdue reminders/escalation remain in development.
