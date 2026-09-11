@@ -1,3 +1,4 @@
+import { addOperatorInboxCommands } from "./operatorInbox";
 import type { Command } from "commander";
 import { authApi } from "@ultra-herdr/api";
 import { importOperator, issuePermit, operatorClient } from "../auth/operator";
@@ -7,6 +8,7 @@ import { clientFor, loadProfile } from "../auth/client";
 function show(value: unknown) { console.log(JSON.stringify(value, null, 2)); }
 export function addAuthCommands(program: Command) {
   const operator = program.command("operator").description("Use an explicitly selected operator profile");
+  addOperatorInboxCommands(operator);
   operator.command("import").description("Verify and save an operator profile")
     .requiredOption("--from <file>", "Protected operator artifact")
     .requiredOption("--output <file>", "New protected profile path")

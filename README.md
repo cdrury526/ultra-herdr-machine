@@ -421,3 +421,22 @@ generation: issue a fresh explicit resume after extending. Use a new request fil
 for a replacement resume when the old pending snapshot is superseded; the original
 journal always recovers the original message. Existing received-ticket
 retries retain their original artifact and receipt.
+
+## Operator escalation inbox
+
+Operators can retrieve execution-budget escalation messages addressed to their own
+identity using an explicit protected profile with `inbox.review`:
+
+```bash
+herdr-cli operator inbox --profile /secure/operator.json
+herdr-cli operator receive --profile /secure/operator.json --delivery DELIVERY_ID --generation 1
+```
+
+Receive also accepts `--ticket TICKET` instead of delivery and generation. It verifies
+and atomically saves an owner-only message artifact before confirming receipt, then
+prints the result. Interrupted retries retain the same artifact and receipt.
+Acknowledgement does not take over a task, resume execution, or acknowledge the
+worker's stop. These commands require no Herdr pane or machine caller binding.
+History access remains separately authorized. Other escalation causes are not yet
+supported for receipt. API 0.18 uses a new inbox cursor format; restart pagination
+without a cursor after upgrading.
