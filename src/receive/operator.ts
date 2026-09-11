@@ -13,17 +13,23 @@ async function selected(path: string) {
   });
   return { config, profile, client };
 }
-export async function readOperatorInbox(options: { profile: string; cursor?: string; limit?: string }) {
+type ListingOptions = { profile: string; cursor?: string; limit?: string };
+export const readOperatorInbox = (options: ListingOptions) => readOperatorListing(options, "inbox");
+export const readOperatorEscalations = (options: ListingOptions) => readOperatorListing(options, "escalations");
+async function readOperatorListing(options: ListingOptions, mode: "inbox" | "escalations") {
   try {
     if (options.limit !== undefined && (!/^[1-9][0-9]*$/.test(options.limit) || !Number.isSafeInteger(Number(options.limit)))) throw new Error();
     const { profile, client } = await selected(options.profile);
-    const result = receiveResultSchemas.operatorInbox.parse(await client.query(receiveApi.operatorInbox, {
-      ...(options.cursor === undefined ? {} : { cursor: options.cursor }), ...(options.limit === undefined ? {} : { limit: Number(options.limit) }) }));
+    const input = { ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
+      ...(options.limit === undefined ? {} : { limit: Number(options.limit) }) };
+    const result = mode === "inbox"
+      ? receiveResultSchemas.operatorInbox.parse(await client.query(receiveApi.operatorInbox, input))
+      : receiveResultSchemas.operatorEscalations.parse(await client.query(receiveApi.operatorEscalations, input));
     if (result.operatorId !== profile.principalId) throw new Error();
     return result;
   } catch (error) {
-    if (error instanceof ConvexError && error.data?.code === "STALE_CURSOR") throw new Error("Inbox changed. Restart without --cursor.");
-    throw new Error("Operator inbox read failed. Check the selected profile, inbox.review capability and page size.");
+    if (error instanceof ConvexError && error.data?.code === "STALE_CURSOR") throw new Error("Listing changed. Restart without --cursor.");
+    throw new Error("Operator listing read failed. Check the selected profile, inbox.review capability and page size.");
   }
 }
 export async function receiveOperator(profilePath: string, input: string | { deliveryId: string; generation: number }) {

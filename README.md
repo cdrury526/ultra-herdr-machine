@@ -429,6 +429,7 @@ identity using an explicit protected profile with `inbox.review`:
 
 ```bash
 herdr-cli operator inbox --profile /secure/operator.json
+herdr-cli operator escalations --profile /secure/operator.json
 herdr-cli operator receive --profile /secure/operator.json --delivery DELIVERY_ID --generation 1
 ```
 
@@ -456,3 +457,10 @@ private artifact, and reports `mode: packet`. It does not acknowledge the target
 start its clocks, or grant general task history. Receive the escalation first.
 Task/session identity references do not grant current-state access; this command
 retrieves message/submission bodies only. Other packet kinds remain unsupported.
+
+`operator escalations` lists one page of awaiting, unresolved, or blocked review
+escalations addressed to the selected operator, including messages already received.
+Receipt does not reset the response window. Resolved or superseded reviews disappear
+from this view while their accepted message receipts remain available. Follow a
+non-null `cursor` with `--cursor`, even after an empty page. If the listing changes,
+restart without a cursor. This metadata view grants no task-control authority.
