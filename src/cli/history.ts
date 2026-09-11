@@ -17,8 +17,9 @@ export function addHistoryCommands(program: Command) {
     .requiredOption("--task <id>", "Expected task identity")
     .requiredOption("--message <id>", "Immutable message identity")
     .option("--digest <sha256>", "Expected message digest")
+    .option("--packet <id>", "Acknowledged execution escalation explicitly referencing this message; operator requires inbox.review")
     .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
     .option("--released-session <id>", "Use this machine's recorded released session and its retained grants")
-    .option("--operator-profile <file>", "Explicit operator profile with history.manage; excludes released-session mode")
+    .option("--operator-profile <file>", "Explicit operator profile: history.manage, or inbox.review with --packet; excludes released-session mode")
     .action(async (options: HistoryOptions) => { console.log(JSON.stringify(await readMessageHistory(options))); });
 }

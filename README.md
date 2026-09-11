@@ -440,3 +440,19 @@ worker's stop. These commands require no Herdr pane or machine caller binding.
 History access remains separately authorized. Other escalation causes are not yet
 supported for receipt. API 0.18 uses a new inbox cursor format; restart pagination
 without a cursor after upgrading.
+
+To retrieve an earlier message explicitly cited by an acknowledged execution
+escalation, select that packet rather than general history authority:
+
+```bash
+herdr-cli history message --operator-profile /secure/operator.json \
+  --task TASK_ID --packet ESCALATION_MESSAGE_ID --message REFERENCED_MESSAGE_ID
+```
+
+This mode requires `inbox.review` for an operator. Live or released sessions use
+the existing explicit session options and must be the packet's addressed recipient.
+It retrieves only the named earlier same-task message, verifies and saves its
+private artifact, and reports `mode: packet`. It does not acknowledge the target,
+start its clocks, or grant general task history. Receive the escalation first.
+Task/session identity references do not grant current-state access; this command
+retrieves message/submission bodies only. Other packet kinds remain unsupported.
