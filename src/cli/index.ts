@@ -27,6 +27,7 @@ import { addVersionCommand } from "./version";
 import { addMetaCommands } from "./meta";
 import { formatBuildVersion } from "../buildInfo";
 import { addTraceCommands } from "./trace";
+import { addSinkCommand } from "./sink";
 
 const program = new Command()
   .name("herdr-cli")
@@ -51,6 +52,7 @@ addReleaseCommands(program);
 addOwnershipCommands(program);
 addConversationCommands(program);
 addTraceCommands(program);
+addSinkCommand(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();

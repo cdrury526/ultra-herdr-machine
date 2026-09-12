@@ -2,14 +2,15 @@ import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { sendReport, type ReportOptions } from "../reports/client";
 import { reportByTask } from "../task/reportByTask";
-import { addAutoRequestFileOption, addDocumentInputOptions, inputModeCount, resolveReportContentInput, resolveRequestFile } from "./mutationOptions";
+import { addAutoRequestFileOption, addDocumentInputOptions, resolveReportContentInput, resolveRequestFile } from "./mutationOptions";
 
 type ReportCliOptions = ReportOptions & { task?: string; data?: string; dataFile?: string; requestFile?: string };
 
 function reportAction(kind: "submission" | "failure_report", options: ReportCliOptions) {
   const requestFile = resolveRequestFile(kind, options.requestFile);
   if (options.task) {
-    if (options.assignment || inputModeCount(options) > 0)
+    // --data/--data-file are the task-mode content flags; only --input and --assignment conflict.
+    if (options.assignment || options.input !== undefined)
       throw new Error("Use --task with --data/--data-file, not --assignment or --input.");
     return reportByTask(kind, { config: options.config, task: options.task, requestFile,
       ...(options.data ? { data: options.data } : {}), ...(options.dataFile ? { dataFile: options.dataFile } : {}) });
