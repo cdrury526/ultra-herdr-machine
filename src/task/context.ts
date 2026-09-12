@@ -65,10 +65,9 @@ export async function readTaskContext(options: {
       actions.push({ command: "release", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
     }
   }
-  const assignmentMessageId = findAssignmentMessage(messages);
-  if (assignmentMessageId && caller.role === "worker") {
+  if (caller.role === "worker" && findAssignmentMessage(messages)) {
     actions.push({ command: "submit", ready: true,
-      argv: ["herdr-cli", "submit", "--assignment", assignmentMessageId, "--input", "REPORT.json", "--request-file", "REPORT.request.json"] });
+      argv: ["herdr-cli", "submit", "--task", taskId, "--data", "{\"payload\":{}}", "--request-file", "REPORT.request.json"] });
   }
 
   return {
