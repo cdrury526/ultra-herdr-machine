@@ -107,8 +107,21 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
   const final=existsSync(resultFile)?readJson(resultFile) as {requestId:string;result:CommandSuccess}:{requestId:crypto.randomUUID(),result};
   writeLocked(resultFile,final);await authority();await act({action:"succeed",requestId:final.requestId,attempt:claim.attempt,result:final.result});
   if(p.op==="split" && result.kind==="split") {
-    const current=await observe(settings),terminal=current.terminals.find(t=>t.paneId===result.paneId);
-    if(current.server.fingerprint!==ctx.fingerprint || !terminal?.shell)throw Error("STALE_BINDING");
-    await client.mutation(runtimeApi.verifyCommandBinding,{...ctx.fence,commandId,requestId:crypto.randomUUID(),stage:"prepare",terminal:{...terminal,discoveryProfileId:config.discoveryId!}});
+    // Split success is durable, but local inspection/cloud health can race pane
+    // creation or unrelated pane closure. Retry only observation/verification;
+    // never repeat the already-acknowledged split.
+    const until=performance.now()+config.launch!.launchTimeoutMs;
+    for (;;) {
+      if(signal.aborted)throw Error("RUNTIME_STOPPED");
+      try {
+        const current=await observe(settings),terminal=current.terminals.find(t=>t.paneId===result.paneId);
+        if(current.server.fingerprint!==ctx.fingerprint || !terminal?.shell)throw Error("STALE_BINDING");
+        await client.mutation(runtimeApi.verifyCommandBinding,{...ctx.fence,commandId,requestId:crypto.randomUUID(),stage:"prepare",terminal:{...terminal,discoveryProfileId:config.discoveryId!}});
+        break;
+      } catch(error) {
+        if(performance.now()>=until)throw error;
+        await wait(settings.policy.retryIntervalMs,signal);
+      }
+    }
   }
 }
