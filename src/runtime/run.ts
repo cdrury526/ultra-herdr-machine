@@ -74,6 +74,9 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     let subscribed = false, delay = settings.policy.retryIntervalMs;
     let commands: {commandId:string;protocolVersion:number;op:string}[] = [];
     const handled=new Set<string>(),lastTried=new Map<string,number>(),recover=recovery();
+    // Starts the next queued command as soon as it arrives or the previous one settles; the
+    // heartbeat loop below is only the fallback, so commands no longer wait out its interval.
+    let tryStart: (() => void) | undefined;
     while (!signal.aborted) {
       try {
         // Observe locally even when the cloud is offline, retaining a verifiable local TUI acknowledgement.
@@ -117,6 +120,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
             commands=inbox.items;
             const unsupported=inbox.items.filter(c=>c.protocolVersion!==PROTOCOL_VERSION || !["split","send","close","snapshot"].includes(c.op)).length;
             if(!execution) status.commands = `${inbox.items.length}${inbox.more ? "+" : ""} pending${unsupported?`, ${unsupported} unsupported`:""}`; publish();
+            tryStart?.();
           }, unavailable));
           subscriptions.push(client.onUpdate(runtimeApi.operatorStatus, fence, value => {
             const inbox = runtimeResultSchemas.operatorStatus.parse(value);
@@ -129,7 +133,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           maintenance=recover({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
             runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal}).then(recovered=>{
             if(recovered.unresolved || recovered.blocked)status.commands=`${recovered.unresolved} require reconciliation; ${recovered.received} received; ${recovered.blocked} blocked`;
-          }).finally(()=>{maintenance=undefined;});
+          }).finally(()=>{maintenance=undefined;tryStart?.();});
           await bounded(maintenance,settings.policy.inspectionTimeoutMs);
         }
         for (const request of pending) {
@@ -139,23 +143,27 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           await answerCaller(client, fence, request.verificationRequestId, observation, settings.policy.defaultDiscoveryProfileId, request.launchProfile);
         }
         status.state = "ready"; publish();
-        // A rejected stale target must not monopolize retries ahead of valid work.
-        const next=commands.filter(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op))
-          .sort((a,b)=>(lastTried.get(a.commandId)??0)-(lastTried.get(b.commandId)??0))[0];
-        if(next && !execution) {
+        const liveClient=client,liveFence=fence,liveServer=server;
+        tryStart=()=>{
+          if(execution || maintenance || signal.aborted)return;
+          // A rejected stale target must not monopolize retries ahead of valid work.
+          const next=commands.filter(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op))
+            .sort((a,b)=>(lastTried.get(a.commandId)??0)-(lastTried.get(b.commandId)??0))[0];
+          if(!next)return;
           handled.add(next.commandId);lastTried.set(next.commandId,Date.now());status.commands=`executing ${next.op}`;publish();
-          execution=executeCommand({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
-            runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal},next.commandId)
+          execution=executeCommand({client:liveClient,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
+            runtime:{instanceId:ack.runtime.instanceId,epoch:liveFence.runtimeEpoch},fence:liveFence,fingerprint:liveServer.fingerprint,signal},next.commandId)
             .then(()=>{status.commands=`completed ${next.op}`;publish();})
             .catch(async()=>{
               if(signal.aborted)return;
               status.commands=`blocked ${next.op} — inspect command state`;publish();
-              try {const current=JSON.parse((await client!.query(runtimeApi.commandStatus,{commandId:next.commandId})).canonical);
+              try {const current=JSON.parse((await liveClient.query(runtimeApi.commandStatus,{commandId:next.commandId})).canonical);
                 if(current.state==="pending" || (current.state==="claimed" && !current.attempt?.started))handled.delete(next.commandId);
               }catch { /* Preserve uncertainty until an authenticated status read succeeds. */ }
             })
-            .finally(()=>{execution=undefined;});
-        }
+            .finally(()=>{execution=undefined;tryStart?.();});
+        };
+        tryStart();
       } catch (error) {
         if (error instanceof ConvexError && error.data && typeof error.data === "object" &&
             "code" in error.data && ["UNAUTHENTICATED", "FORBIDDEN"].includes(String(error.data.code))) status.auth = "unavailable — renew or recover credentials";
