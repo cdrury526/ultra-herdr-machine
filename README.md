@@ -156,6 +156,11 @@ The compiled catalog smoke exercises live import/patch, complete validation,
 review/apply, retries, canonical export round trip and rollback without Node/Bun
 on PATH.
 
+Successful `submit` and `report-failure` responses include `nextAction.instructions`,
+rendered from the active catalog’s `after-submission` bundle. Follow that instruction:
+finish the turn and yield; resume on the next delivered message rather than polling.
+The accepted response retains its instruction and catalog provenance for retries.
+
 ## Dispatch a task
 
 From an interactive enrolled manager, run:
