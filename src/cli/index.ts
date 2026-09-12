@@ -26,6 +26,7 @@ import { addAuthCommands } from "./auth";
 import { addVersionCommand } from "./version";
 import { addMetaCommands } from "./meta";
 import { formatBuildVersion } from "../buildInfo";
+import { addTraceCommands } from "./trace";
 
 const program = new Command()
   .name("herdr-cli")
@@ -49,6 +50,7 @@ addReviewCommands(program);
 addReleaseCommands(program);
 addOwnershipCommands(program);
 addConversationCommands(program);
+addTraceCommands(program);
 program.action(() => program.help());
 try {
   await program.parseAsync();
