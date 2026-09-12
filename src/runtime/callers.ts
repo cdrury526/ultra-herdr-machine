@@ -2,9 +2,9 @@ import type { ConvexClient } from "convex/browser";
 import { contextApi as api, contextResultSchemas } from "@ultra-herdr/api";
 import type { MachineObservation } from "../herdr/observations";
 export async function answerCaller(client: ConvexClient, fence: { runtimeEpoch: number; recoveryEpoch: number },
-  requestId: string, observation: MachineObservation, discoveryId: string) {
+  requestId: string, observation: MachineObservation, discoveryId: string, launchProfile?:{terminalId:string;discoveryProfileId:string}) {
   const snapshotId = crypto.randomUUID();
-  const terminals = observation.terminals.map(t => ({ ...t, discoveryProfileId: discoveryId }));
+  const terminals = observation.terminals.map(t => ({ ...t, discoveryProfileId: t.terminalId===launchProfile?.terminalId?launchProfile.discoveryProfileId:discoveryId }));
   let offset = 0;
   do {
     const page: typeof terminals = [];

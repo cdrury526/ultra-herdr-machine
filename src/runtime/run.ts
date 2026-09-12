@@ -31,6 +31,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
   if (!sessionGuard(settings)) throw new Error("Wrong enrolled Herdr session.");
   const lock = runtimeLock(join(directory, "runtime.lock"));
   if (!lock.held) { lock.close(); throw new Error("A system runtime already holds the local lock."); }
+  let execution:Promise<void>|undefined;
   let client: ConvexClient | undefined, fence: { runtimeEpoch: number; recoveryEpoch: number } | undefined;
   let server: { serverBindingId: string; serverEpoch: number; fingerprint: string } | undefined;
   const subscriptions: (() => void)[] = [];
@@ -67,10 +68,9 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     }));
     let intent: { runtimeInstanceId: string; requestId: string; expectedRuntimeEpoch: number; recoveryEpoch: number } | undefined;
     let serverIntent: { requestId: string; expectedServerEpoch: number } | undefined;
-    let pending: { verificationRequestId: string; serverBindingId: string; expiresAt: number }[] = [];
+    let pending: { verificationRequestId: string; serverBindingId: string; expiresAt: number; launchProfile?:{terminalId:string;discoveryProfileId:string} }[] = [];
     let subscribed = false, delay = settings.policy.retryIntervalMs;
     let commands: {commandId:string;protocolVersion:number;op:string}[] = [];
-    let execution:Promise<void>|undefined;
     const handled=new Set<string>();
     while (!signal.aborted) {
       try {
@@ -112,7 +112,9 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           const unavailable = () => { status.commands = "unavailable"; status.operator = "unavailable"; publish(); };
           subscriptions.push(client.onUpdate(runtimeApi.inbox, fence, value => {
             const inbox = runtimeResultSchemas.inbox.parse(value);
-            commands=inbox.items; status.commands = `${inbox.items.length}${inbox.more ? "+" : ""} pending`; publish();
+            commands=inbox.items;
+            const unsupported=inbox.items.filter(c=>c.protocolVersion!==PROTOCOL_VERSION || !["split","send","close","snapshot"].includes(c.op)).length;
+            if(!execution) status.commands = `${inbox.items.length}${inbox.more ? "+" : ""} pending${unsupported?`, ${unsupported} unsupported`:""}`; publish();
           }, unavailable));
           subscriptions.push(client.onUpdate(runtimeApi.operatorStatus, fence, value => {
             const inbox = runtimeResultSchemas.operatorStatus.parse(value);
@@ -125,16 +127,21 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           if (request.expiresAt <= Date.now() || request.serverBindingId !== server.serverBindingId) continue;
           const observation = await observe(settings);
           if (observation.server.fingerprint !== server.fingerprint) break;
-          await answerCaller(client, fence, request.verificationRequestId, observation, settings.policy.defaultDiscoveryProfileId);
+          await answerCaller(client, fence, request.verificationRequestId, observation, settings.policy.defaultDiscoveryProfileId, request.launchProfile);
         }
         status.state = "ready"; publish();
-        const next=commands.find(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send"].includes(c.op));
+        const next=commands.find(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","snapshot"].includes(c.op));
         if(next && !execution) {
           handled.add(next.commandId);status.commands=`executing ${next.op}`;publish();
           execution=executeCommand({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
             runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal},next.commandId)
             .then(()=>{status.commands=`completed ${next.op}`;publish();})
-            .catch(()=>{status.commands=`blocked ${next.op} — inspect command state`;publish();})
+            .catch(async()=>{
+              status.commands=`blocked ${next.op} — inspect command state`;publish();
+              try {const current=JSON.parse((await client!.query(runtimeApi.commandStatus,{commandId:next.commandId})).canonical);
+                if(current.state==="pending" || (current.state==="claimed" && !current.attempt?.started))handled.delete(next.commandId);
+              }catch { /* Preserve uncertainty until an authenticated status read succeeds. */ }
+            })
             .finally(()=>{execution=undefined;});
         }
       } catch (error) {
@@ -150,6 +157,8 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
   } finally {
     subscriptions.forEach(stop => stop());
     if (client && fence) await bounded(client.mutation(api.reportHealth, { ...fence, state: "offline" }), 2000).catch(() => undefined);
-    await client?.close(); lock.close();
+    await client?.close();
+    await execution?.catch(()=>undefined);
+    lock.close();
   }
 }

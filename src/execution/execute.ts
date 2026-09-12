@@ -1,3 +1,5 @@
+import { snapshot } from "./snapshot";
+import { requests } from "./requests";
 import { z } from "zod";
 import type { ConvexClient } from "convex/browser";
 import { runtimeApi,commandEnvelope,commandAttempt,commandLease,commandReceipt,commandPhases,commandPhaseResult,type CommandPhase,type CommandEnvelope,type CommandRequest,type CommandSuccess } from "@ultra-herdr/api";
@@ -9,7 +11,7 @@ import { observe } from "../runtime/observation";
 import { executionConfig,bootstrap } from "./config";
 import { localTarget,effect,screen,target,wait,foregroundAnchor } from "./local";
 import { encode,hash,journalFile,loadJournal,saveJournal,observation,type Journal } from "./journal";
-const claimSchema=z.object({attempt:commandAttempt,lease:commandLease,nextPhase:z.string(),configuration:executionConfig,envelope:commandEnvelope}).strict();
+const claimSchema=z.object({attempt:commandAttempt,lease:commandLease,nextPhase:z.string()}).strict();
 export interface ExecutorContext {client:ConvexClient;settings:Installation;directory:string;machineId:string;deploymentId:string;runtime:{instanceId:string;epoch:number};fence:{runtimeEpoch:number;recoveryEpoch:number};fingerprint:string;signal:AbortSignal}
 export async function executeCommand(ctx:ExecutorContext,commandId:string) {
   const {client,settings,signal}=ctx;
@@ -18,16 +20,18 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
   const envelope=commandEnvelope.parse(read.envelope),config=executionConfig.parse(read.configuration);
   const {commandDigest,...unsigned}=envelope;
   if(envelope.targetMachineId!==ctx.machineId || encode(await hash(unsigned))!==encode(commandDigest))throw Error("INVALID_COMMAND");
-  const requestFile=join(protectedDirectory(join(ctx.directory,"command-requests")),`${commandId}.json`);
-  let request=existsSync(requestFile)?z.object({runtime: z.string(),requestId:z.string().uuid()}).strict().parse(readJson(requestFile)):null;
-  if(request && request.runtime!==ctx.runtime.instanceId)throw Error("RECOVERY_BLOCKED");
-  if(!request){request={runtime:ctx.runtime.instanceId,requestId:crypto.randomUUID()};writeLocked(requestFile,request);}
-  let sent=performance.now();const claim=claimSchema.parse(await act({action:"claim",commandId,runtime:ctx.runtime,requestId:request.requestId}));
-  let deadline=sent+claim.lease.durationMs-config.timing.localLeaseGuardMs;
+  const state=JSON.parse((await client.query(runtimeApi.commandStatus,{commandId})).canonical);
+  const generation=state.state==="pending"?state.nextAttemptEpoch:state.attempt?.attemptEpoch;
+  if(!Number.isSafeInteger(generation)||generation<1)throw Error("RECOVERY_BLOCKED");
+  const durable=requests(client,ctx.directory,`${commandId}-${generation}`,ctx.runtime.instanceId);
+  const claimed=await durable("claim",requestId=>({action:"claim",commandId,runtime:ctx.runtime,requestId}));
+  const claim=claimSchema.parse(claimed.value);
+  let deadline=claimed.startedAt+claim.lease.durationMs-config.timing.localLeaseGuardMs;
+  let renewal=0;
   const phaseResults:NonNullable<Journal["phaseResult"]>[]=[];
   async function authority() {
     if(signal.aborted)throw Error("RUNTIME_STOPPED");
-    if(performance.now()+config.timing.commandRenewIntervalMs>=deadline){sent=performance.now();const renewed=await act({action:"renew",attempt:claim.attempt,requestId:crypto.randomUUID()});deadline=sent+commandLease.parse(renewed.lease).durationMs-config.timing.localLeaseGuardMs;}
+    if(performance.now()+config.timing.commandRenewIntervalMs>=deadline){const renewed=await durable(`renew-${renewal}`,requestId=>({action:"renew",attempt:claim.attempt,requestId}));renewal++;deadline=renewed.startedAt+commandLease.parse(renewed.value.lease).durationMs-config.timing.localLeaseGuardMs;}
     if(performance.now()>=deadline)throw Error("LEASE_EXPIRED");
   }
   async function sleep(ms:number) {let remaining=ms;while(remaining>0){await authority();const part=Math.min(remaining,config.timing.commandRenewIntervalMs/2);await wait(part,signal);remaining-=part;}}
@@ -40,8 +44,8 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
       await authority();
       const local=await localTarget(settings,config,ctx.fingerprint),route=target(envelope);
       if(route && local.terminal?.paneId!==route.paneId)throw Error("STALE_BINDING");
-      sent=performance.now();const start=await act({action:"start",requestId:crypto.randomUUID(),attempt:claim.attempt,phase,commandDigest:envelope.commandDigest});
-      deadline=sent+commandLease.parse(start.lease).durationMs-config.timing.localLeaseGuardMs;
+      const start=await durable(`start-${phase}`,requestId=>({action:"start",requestId,attempt:claim.attempt,phase,commandDigest:envelope.commandDigest}));
+      deadline=start.startedAt+commandLease.parse(start.value.lease).durationMs-config.timing.localLeaseGuardMs;
       await authority();
       record={journalVersion:1,recordGeneration:1,deploymentId:ctx.deploymentId,machineId:ctx.machineId,attempt:claim.attempt,phase,commandDigest:envelope.commandDigest,
         serverBindingId:route?.serverBindingId??(envelope.payload as {serverBindingId:string}).serverBindingId,...(route?{target:route}:{}),rpcRequestId:crypto.randomUUID(),reportRequestId:crypto.randomUUID(),state:"intent",recordedAt:Date.now()};
@@ -58,10 +62,13 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
           if(phase.endsWith(".text")) await effect(settings,ctx.fingerprint,{method:"pane.send_text",params:{pane_id:p.target.paneId,text:p.purpose==="bootstrap"?bootstrap(config,p.target.paneId):p.offerText}},record.rpcRequestId);
           else await effect(settings,ctx.fingerprint,{method:"pane.send_keys",params:{pane_id:p.target.paneId,keys:["enter"]}},record.rpcRequestId);
           result={kind:"input_phase_ack",observedAt:Date.now(),purpose:p.purpose,target:p.target,phase,rpcRequestId:record.rpcRequestId};
-        } else throw Error("Handler not installed.");
+        } else if(p.op==="snapshot") result=await snapshot(settings,ctx.directory,ctx.fingerprint,p,config.timing.snapshotRetentionMs);
+        else throw Error("Handler not installed.");
         record={...record,recordGeneration:record.recordGeneration+1,state:"socket_ack",phaseResult:commandPhaseResult.parse(result)};saveJournal(path,record);
-      } catch {
-        record={...record,recordGeneration:record.recordGeneration+1,state:"uncertain",phaseResult:undefined,error:{code:"RPC_UNCERTAIN",phase,effect:"may_have_applied",detail:"Herdr effect not confirmed; preserve the phase journal and reconcile before another write.",evidence:[]}};saveJournal(path,record);
+      } catch (error) {
+        const readOnly=envelope.payload.op==="snapshot";
+        const {phaseResult,...uncertain}=record;
+        record={...uncertain,recordGeneration:record.recordGeneration+1,state:"uncertain",error:{code:readOnly && error instanceof Error && error.message==="STALE_SNAPSHOT"?"STALE_SNAPSHOT":readOnly?"LOCAL_IO_FAILED":"RPC_UNCERTAIN",phase,effect:readOnly?"not_applied":"may_have_applied",detail:readOnly?"Read-only snapshot unavailable; no terminal write performed.":"Herdr effect not confirmed; preserve the phase journal and reconcile before another write.",evidence:[]}};saveJournal(path,record);
         await act({action:"fail",requestId:record.reportRequestId,attempt:claim.attempt,error:record.error!});throw Error("RPC_UNCERTAIN");
       }
     }

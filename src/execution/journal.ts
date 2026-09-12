@@ -23,7 +23,6 @@ export function journalFile(directory:string,commandId:string,epoch:number,phase
 export function loadJournal(path:string) {return existsSync(path)?journalSchema.parse(readJson(path)):null;}
 export function saveJournal(path:string,record:Journal) {const r=journalSchema.parse(record);encode(r);writeLocked(path,r);}
 export async function observation(directory:string,record:Journal) {
-  const observationId=record.reportRequestId,body={machineId:record.machineId,attempt:record.attempt,phase:record.phase,
-    rpcRequestId:record.rpcRequestId,...(record.phaseResult?{result:record.phaseResult}:{error:record.error})};
+  const observationId=record.reportRequestId,body={machineId:record.machineId,attempt:record.attempt,summary:record.phaseResult??record.error};
   const digest=await hash(body);writeLocked(join(protectedDirectory(join(directory,"command-observations")),`${observationId}.json`),body);return {observationId,digest};
 }
