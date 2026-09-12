@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import canonicalize from "canonicalize";
 import { verifyEnvelope, messageArtifactId } from "@ultra-herdr/api";
 import { saveArtifact, ReceiveError } from "./artifact";
+import { receiveStage } from "./errors";
 import { withArtifactLock } from "./artifactLock";
 const identity = z.string().min(1).max(256), positive = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -34,9 +35,9 @@ async function artifact(value: z.infer<typeof exchange> | z.infer<typeof operato
     if (source.messageId !== ref.id || source.digest !== ref.digest || source.taskId !== envelope.taskId ||
         source.messageId !== value.source.messageId || source.digest !== value.source.digest || source.byteLength !== value.source.byteLength ||
         await messageArtifactId(value.deploymentId, source) !== value.source.artifactId) throw new ReceiveError();
-    sourcePath = await saveArtifact(directory, value.deploymentId, value.source.artifactId, source);
+    sourcePath = await receiveStage("save-artifact", () => saveArtifact(directory, value.deploymentId, value.source!.artifactId, source));
   }
-  return { path: await saveArtifact(directory, value.deploymentId, value.artifactId, envelope), envelope, ...(sourcePath ? { sourcePath } : {}) };
+  return { path: await receiveStage("save-artifact", () => saveArtifact(directory, value.deploymentId, value.artifactId, envelope)), envelope, ...(sourcePath ? { sourcePath } : {}) };
 }
 async function finish<T extends ConfirmationBase>(domain: string, input: Omit<T, "requestId">, confirm: (input: T) => Promise<unknown>) {
   const requestId = createHash("sha256").update(canonicalize([domain, 1, input])!).digest("hex");
@@ -48,25 +49,25 @@ async function finish<T extends ConfirmationBase>(domain: string, input: Omit<T,
 }
 /** Thin client sequencing only. Backend owns authorization and all receipt effects. */
 export async function receiveMessage(transport: ReceiveTransport, directory: string, caller: { sessionId: string; bindingEpoch: number }) {
-  return withArtifactLock(directory, async () => { try {
-    const value = exchange.parse(await transport.exchange());
-    if (value.bindingEpoch !== caller.bindingEpoch) throw new ReceiveError();
-    const saved = await artifact(value, directory, { kind: "session", id: caller.sessionId });
-    const confirmed = await finish<Confirmation>("ultra-herdr-receive-confirm", { deliveryId: value.deliveryId,
+  return receiveStage("artifact-lock", () => withArtifactLock(directory, async () => {
+    const value = await receiveStage("exchange", async () => exchange.parse(await transport.exchange()));
+    if (value.bindingEpoch !== caller.bindingEpoch) throw new ReceiveError("exchange");
+    const saved = await receiveStage("verify-artifact", () => artifact(value, directory, { kind: "session", id: caller.sessionId }));
+    const confirmed = await receiveStage("confirm", () => finish<Confirmation>("ultra-herdr-receive-confirm", { deliveryId: value.deliveryId,
       generation: value.generation, bindingEpoch: value.bindingEpoch, artifactId: value.artifactId, digest: value.digest, byteLength: value.byteLength },
-      input => transport.confirm(input));
+      input => transport.confirm(input)));
     return { ...saved, ...confirmed };
-  } catch { throw new ReceiveError(); } });
+  }));
 }
 /** Operator identity replaces pane binding. Stable requests survive process interruption and credential renewal. */
 export async function receiveOperatorMessage(transport: OperatorReceiveTransport, directory: string, operatorId: string) {
-  return withArtifactLock(directory, async () => { try {
-    const value = operatorExchange.parse(await transport.exchange());
-    if (value.operatorId !== operatorId) throw new ReceiveError();
-    const saved = await artifact(value, directory, { kind: "operator", id: operatorId });
-    const confirmed = await finish<OperatorConfirmation>("ultra-herdr-operator-receive-confirm", { operatorId,
+  return receiveStage("artifact-lock", () => withArtifactLock(directory, async () => {
+    const value = await receiveStage("exchange", async () => operatorExchange.parse(await transport.exchange()));
+    if (value.operatorId !== operatorId) throw new ReceiveError("exchange");
+    const saved = await receiveStage("verify-artifact", () => artifact(value, directory, { kind: "operator", id: operatorId }));
+    const confirmed = await receiveStage("confirm", () => finish<OperatorConfirmation>("ultra-herdr-operator-receive-confirm", { operatorId,
       deliveryId: value.deliveryId, generation: value.generation, artifactId: value.artifactId, digest: value.digest, byteLength: value.byteLength },
-      input => transport.confirm(input));
+      input => transport.confirm(input)));
     return { ...saved, ...confirmed };
-  } catch { throw new ReceiveError(); } });
+  }));
 }

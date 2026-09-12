@@ -4,9 +4,8 @@ import { resolve, dirname, basename } from "node:path";
 import { randomUUID } from "node:crypto";
 import { verifyEnvelope, messageArtifactId, type MessageEnvelope } from "@ultra-herdr/api";
 
-export class ReceiveError extends Error {
-  constructor() { super("Receive could not verify, save or confirm this message. Retry with current authorization; no content was returned."); }
-}
+import { ReceiveError } from "./errors";
+export { ReceiveError } from "./errors";
 function owned(fd: number, directory: boolean) {
   const stat = fstatSync(fd);
   if (stat.uid !== process.getuid!() || (stat.mode & 0o777) !== (directory ? 0o700 : 0o600) ||

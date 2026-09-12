@@ -3,7 +3,7 @@ import { ConvexError } from "convex/values";
 import { receiveApi, receiveResultSchemas } from "@ultra-herdr/api";
 import { loadProfile, clientFor } from "../auth/client";
 import { receiveOperatorMessage } from "./transaction";
-import { ReceiveError } from "./artifact";
+import { ReceiveError, receiveFailure } from "./errors";
 async function selected(path: string) {
   const config = resolve(path), profile = await loadProfile(config, "operator"), deadline = performance.now() + 20_000;
   const client = clientFor(profile, (input, init) => {
@@ -45,5 +45,5 @@ export async function receiveOperator(profilePath: string, input: string | { del
         return receiveResultSchemas.operatorConfirm.parse(await fresh.client.mutation(receiveApi.operatorConfirm, { ticket, confirmation }));
       },
     }, `${config}.messages`, profile.principalId);
-  } catch { throw new ReceiveError(); }
+  } catch (error) { throw receiveFailure(error, "profile"); }
 }
