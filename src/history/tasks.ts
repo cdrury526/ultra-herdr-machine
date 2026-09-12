@@ -1,7 +1,7 @@
 import { historyApi, historyResultSchemas } from "@ultra-herdr/api";
 import { ConvexError } from "convex/values";
 import { historyConnection, HistoryError, type HistoryScopeOptions } from "./client";
-export interface HierarchyOptions extends HistoryScopeOptions { scope: string; cursor?: string; limit?: string }
+export interface HierarchyOptions extends HistoryScopeOptions { scope: string; cursor?: string; limit?: string; verificationId?: string }
 /** The backend owns lineage, current authority and bounded effective-state reads. */
 export async function listTaskHierarchy(options: HierarchyOptions) {
   try {

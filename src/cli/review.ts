@@ -3,19 +3,39 @@ import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { sendReview, reviewState, operatorReviewState, budgetState, type ReviewOptions } from "../review/client";
+import { completeByTask } from "../task/completeTask";
+
+function reviewAction(command: "complete" | "feedback" | "revise" | "extend" | "resume",
+  options: ReviewOptions & { task?: string; summary?: string }) {
+  if (command === "complete" && options.task) {
+    if (options.input) throw new Error("Use either --task or --input, not both.");
+    return completeByTask({ config: options.config!, task: options.task, summary: options.summary, requestFile: options.requestFile });
+  }
+  if (!options.input) throw new Error("Provide --input, or use complete --task for automatic scaffolding.");
+  return sendReview(command, options);
+}
+
 export function addReviewCommands(program: Command) {
   const config = defaultMachineConfig();
   for (const command of ["complete", "feedback", "revise", "extend", "resume"] as const) {
-    program.command(command).description(command === "complete"
+    const cmd = program.command(command).description(command === "complete"
       ? "Accept the current submission as completed; retain the worker session."
       : command === "feedback" ? "Send same-contract corrections; work resumes when the worker receives current feedback."
       : command === "revise" ? "Issue a full pinned assignment revision; one revision may await receipt at a time."
       : command === "resume" ? "Request resume of one acknowledged stopped task; only receipt restarts remaining execution time."
       : "Increase the task allowance within its original limits; never implicitly resume stopped work.")
-      .requiredOption("--input <file>", "Typed JSON input including task, expected epochs and brief slots; review commands also require submission; omit requestId")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
-      .option("--config <file>", "Protected machine profile", config)
-      .action(async (options: ReviewOptions) => { console.log(JSON.stringify(await sendReview(command, options))); });
+      .option("--config <file>", "Protected machine profile", config);
+    if (command === "complete") {
+      cmd.option("--task <id>", "Complete using current review-state scaffolding")
+        .option("--summary <text>", "Completion evidence summary when using --task")
+        .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+    } else {
+      cmd.requiredOption("--input <file>", "Typed JSON input including task, expected epochs and brief slots; review commands also require submission; omit requestId");
+    }
+    cmd.action(async (options: ReviewOptions & { task?: string; summary?: string }) => {
+      console.log(JSON.stringify(await reviewAction(command, options)));
+    });
   }
   for (const command of ["complete", "feedback", "revise", "extend", "resume"] as const) {
     program.command(`operator-${command}`).description(`Apply ${command} as the authenticated current operator owner.`)

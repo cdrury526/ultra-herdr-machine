@@ -8,8 +8,8 @@
     "bun": "1.4.2"
   },
   "scripts": {
-    "build": "bun build src/cli/index.ts --compile --outfile dist/herdr-cli",
-    "typecheck": "tsc --noEmit",
+    "build": "bun scripts/write-build-info.ts && bun build src/cli/index.ts --compile --outfile dist/herdr-cli",
+    "typecheck": "bun scripts/write-build-info.ts && tsc --noEmit",
     "smoke:ink": "bun build scripts/ink-smoke.tsx --compile --outfile dist/ink-smoke && ./dist/ink-smoke"
   },
   "dependencies": {

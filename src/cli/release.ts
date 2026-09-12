@@ -45,10 +45,21 @@ export function addReleaseCommands(program: Command) {
     .option("--config <file>", "Protected machine profile", config)
     .action(async options => { console.log(JSON.stringify(await discardReleaseAuthority(options))); });
   program.command("release").description("Request routine release of an idle owned worker or verified descendant; closing awaits machine confirmation.")
-    .requiredOption("--input <file>", "Typed JSON: taskId, expectedOwnerEpoch, expectedAssignmentEpoch, expectedBindingEpoch, reason, briefKey, values, bundleValues; omit requestId")
+    .option("--task <id>", "Release using current release-state scaffolding")
+    .option("--reason <text>", "Release reason when using --task")
+    .option("--input <file>", "Typed JSON: taskId, expectedOwnerEpoch, expectedAssignmentEpoch, expectedBindingEpoch, reason; omit requestId")
     .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
     .option("--config <file>", "Protected machine profile", config)
-    .action(async options => { console.log(JSON.stringify(await requestRelease(options))); });
+    .action(async (options: { config: string; task?: string; reason?: string; input?: string; requestFile: string }) => {
+      if (options.task) {
+        if (options.input) throw new Error("Use either --task or --input, not both.");
+        const { releaseByTask } = await import("../task/releaseTask");
+        console.log(JSON.stringify(await releaseByTask({ config: options.config, task: options.task, reason: options.reason, requestFile: options.requestFile })));
+        return;
+      }
+      if (!options.input) throw new Error("Provide --input, or use release --task for automatic scaffolding.");
+      console.log(JSON.stringify(await requestRelease(options as { config: string; input: string; requestFile: string })));
+    });
   program.command("release-state").description("Read owner/verified-ancestor session epochs and release state; acceptance rechecks eligibility.")
     .requiredOption("--task <id>", "Task owned by this parent session or verified descendant")
     .option("--ancestry-check <id>", "Verified ancestry check for descendant release metadata")

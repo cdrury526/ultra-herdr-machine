@@ -23,15 +23,17 @@ import { PROTOCOL_VERSION } from "@ultra-herdr/api";
 import { addContextCommands } from "./context";
 import { ContextError } from "../context/errors";
 import { addAuthCommands } from "./auth";
-import metadata from "../../package.json";
+import { addVersionCommand } from "./version";
+import { formatBuildVersion } from "../buildInfo";
 
 const program = new Command()
   .name("herdr-cli")
   .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Cooperative stops/resumes, allowance extensions, typed questions/replies/nudges, authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; typed dispatch coordinates interactive worker execution.`)
-  .version(metadata.version)
+  .version(formatBuildVersion())
   .showHelpAfterError();
 
 addAuthCommands(program);
+addVersionCommand(program);
 addDispatchCommand(program);
 addRuntimeCommands(program);
 addCatalogCommands(program);

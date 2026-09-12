@@ -29,8 +29,13 @@ bun run typecheck
 bun run build
 ./dist/herdr-cli --help
 ./dist/herdr-cli --version
+./dist/herdr-cli version --json
 bun run smoke:ink
 ```
+
+`--version` and `version --json` include the embedded git commit, build timestamp and
+dirty-tree flag generated at compile time. Rebuild after source changes; semver alone is
+not enough to detect a stale binary.
 
 The versioned public API tarball in `vendor/` permits isolated builds before registry
 publication. It contains only public protocol JavaScript, declarations and package
