@@ -21,10 +21,10 @@ export function readReportFile(path: string, maxBytes = reportLimits.maxBytes, p
 export function reportSlots(path: string) {
   const value = parseJson(readReportFile(path), reportLimits, "task.report");
   if (!value || typeof value !== "object" || Array.isArray(value) ||
-      !Object.hasOwn(value, "values") || !Object.hasOwn(value, "bundleValues") ||
+      !Object.hasOwn(value, "values") ||
       Object.keys(value).some(key => !["values", "bundleValues", "attributes", "referenceAuthorities"].includes(key)))
-    throw new ReportError("Report input must contain values and bundleValues, with optional attributes and referenceAuthorities.");
-  return value as { values: Json; bundleValues: Json; attributes?: Json; referenceAuthorities?: Json };
+    throw new ReportError("Report input must contain values, with optional legacy bundleValues, attributes and referenceAuthorities.");
+  return value as { values: Json; bundleValues?: Json; attributes?: Json; referenceAuthorities?: Json };
 }
 export function reportFailure(error: unknown): ReportError {
   if (error instanceof ReportError) return error;
