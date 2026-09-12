@@ -7,12 +7,17 @@ import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { requestRelease, releaseState, releaseStatus } from "../release/client";
+import { addAutoRequestFileOption, addDocumentInputOptions, resolveDocumentInput, resolveRequestFile } from "./mutationOptions";
 export function addReleaseCommands(program: Command) {
-  program.command("operator-release").description("Request routine worker release with sessions.forceRelease; outstanding work/replies still prevent release.")
-    .requiredOption("--operator-profile <file>", "Explicit protected operator profile")
-    .requiredOption("--input <file>", "Typed release input with task, expected epochs, reason and notice brief slots; omit requestId")
-    .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
-    .action(async options => { console.log(JSON.stringify(await requestOperatorRelease(options))); });
+  const operatorRelease = program.command("operator-release").description("Request routine worker release with sessions.forceRelease; outstanding work/replies still prevent release.")
+    .requiredOption("--operator-profile <file>", "Explicit protected operator profile");
+  addDocumentInputOptions(operatorRelease, "Typed release input with task, expected epochs, reason and notice brief slots; omit requestId");
+  addAutoRequestFileOption(operatorRelease);
+  operatorRelease.action(async options => {
+    const input = resolveDocumentInput("operator-release", options);
+    const requestFile = resolveRequestFile("operator-release", options.requestFile);
+    console.log(JSON.stringify(await requestOperatorRelease({ ...options, input, requestFile })));
+  });
   program.command("operator-release-state").description("Read release epoch metadata using the explicit operator capability.")
     .requiredOption("--operator-profile <file>", "Explicit protected operator profile")
     .requiredOption("--task <id>", "Task whose latest worker assignment is being considered")
@@ -44,22 +49,23 @@ export function addReleaseCommands(program: Command) {
     .requiredOption("--check <id>", "Ancestry check identity")
     .option("--config <file>", "Protected machine profile", config)
     .action(async options => { console.log(JSON.stringify(await discardReleaseAuthority(options))); });
-  program.command("release").description("Request routine release of an idle owned worker or verified descendant; closing awaits machine confirmation.")
+  const release = program.command("release").description("Request routine release of an idle owned worker or verified descendant; closing awaits machine confirmation.")
     .option("--task <id>", "Release using current release-state scaffolding")
     .option("--reason <text>", "Release reason when using --task")
-    .option("--input <file>", "Typed JSON: taskId, expectedOwnerEpoch, expectedAssignmentEpoch, expectedBindingEpoch, reason; omit requestId")
-    .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
-    .option("--config <file>", "Protected machine profile", config)
-    .action(async (options: { config: string; task?: string; reason?: string; input?: string; requestFile: string }) => {
-      if (options.task) {
-        if (options.input) throw new Error("Use either --task or --input, not both.");
-        const { releaseByTask } = await import("../task/releaseTask");
-        console.log(JSON.stringify(await releaseByTask({ config: options.config, task: options.task, reason: options.reason, requestFile: options.requestFile })));
-        return;
-      }
-      if (!options.input) throw new Error("Provide --input, or use release --task for automatic scaffolding.");
-      console.log(JSON.stringify(await requestRelease(options as { config: string; input: string; requestFile: string })));
-    });
+    .option("--config <file>", "Protected machine profile", config);
+  addDocumentInputOptions(release, "Typed JSON: taskId, expectedOwnerEpoch, expectedAssignmentEpoch, expectedBindingEpoch, reason; omit requestId");
+  addAutoRequestFileOption(release);
+  release.action(async (options: { config: string; task?: string; reason?: string; input?: string; data?: string; dataFile?: string; requestFile?: string }) => {
+    const requestFile = resolveRequestFile("release", options.requestFile);
+    if (options.task) {
+      if (options.input || options.data || options.dataFile) throw new Error("Use either --task or --input/--data, not both.");
+      const { releaseByTask } = await import("../task/releaseTask");
+      console.log(JSON.stringify(await releaseByTask({ config: options.config, task: options.task, reason: options.reason, requestFile })));
+      return;
+    }
+    const input = resolveDocumentInput("release", options);
+    console.log(JSON.stringify(await requestRelease({ config: options.config, input, requestFile })));
+  });
   program.command("release-state").description("Read owner/verified-ancestor session epochs and release state; acceptance rechecks eligibility.")
     .requiredOption("--task <id>", "Task owned by this parent session or verified descendant")
     .option("--ancestry-check <id>", "Verified ancestry check for descendant release metadata")

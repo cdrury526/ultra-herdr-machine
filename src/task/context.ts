@@ -103,7 +103,7 @@ export async function readTaskContext(options: {
   }
   if (caller.role === "worker" && findAssignmentMessage(messages)) {
     actions.push({ command: "submit", ready: true,
-      argv: ["herdr-cli", "submit", "--task", taskId, "--data", "{\"payload\":{}}", "--request-file", "REPORT.request.json"] });
+      argv: ["herdr-cli", "submit", "--task", taskId, "--data", "{\"payload\":{}}"] });
   }
 
   return {

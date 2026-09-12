@@ -24,6 +24,7 @@ import { addContextCommands } from "./context";
 import { ContextError } from "../context/errors";
 import { addAuthCommands } from "./auth";
 import { addVersionCommand } from "./version";
+import { addMetaCommands } from "./meta";
 import { formatBuildVersion } from "../buildInfo";
 
 const program = new Command()
@@ -34,6 +35,7 @@ const program = new Command()
 
 addAuthCommands(program);
 addVersionCommand(program);
+addMetaCommands(program);
 addDispatchCommand(program);
 addRuntimeCommands(program);
 addCatalogCommands(program);
