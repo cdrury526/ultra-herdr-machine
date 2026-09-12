@@ -26,7 +26,7 @@ async function bounded<T>(promise: Promise<T>, ms: number): Promise<T> {
   try { return await Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("Cloud operation timed out.")), ms); })]); }
   finally { clearTimeout(timer!); }
 }
-/** Owns state and subscriptions; Ink only renders onStatus. No command execution before target 2. */
+/** Owns state and subscriptions; Ink only renders onStatus. The runtime owns command execution and recovery. */
 export async function runAgent(directory: string, onStatus: (status: RuntimeStatus) => void, signal: AbortSignal) {
   const settings = installation(directory);
   if (!sessionGuard(settings)) throw new Error("Wrong enrolled Herdr session.");
@@ -72,7 +72,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     let pending: { verificationRequestId: string; serverBindingId: string; expiresAt: number; launchProfile?:{terminalId:string;discoveryProfileId:string} }[] = [];
     let subscribed = false, delay = settings.policy.retryIntervalMs;
     let commands: {commandId:string;protocolVersion:number;op:string}[] = [];
-    const handled=new Set<string>(),recover=recovery();
+    const handled=new Set<string>(),lastTried=new Map<string,number>(),recover=recovery();
     while (!signal.aborted) {
       try {
         // Observe locally even when the cloud is offline, retaining a verifiable local TUI acknowledgement.
@@ -138,9 +138,11 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           await answerCaller(client, fence, request.verificationRequestId, observation, settings.policy.defaultDiscoveryProfileId, request.launchProfile);
         }
         status.state = "ready"; publish();
-        const next=commands.find(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op));
+        // A rejected stale target must not monopolize retries ahead of valid work.
+        const next=commands.filter(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op))
+          .sort((a,b)=>(lastTried.get(a.commandId)??0)-(lastTried.get(b.commandId)??0))[0];
         if(next && !execution) {
-          handled.add(next.commandId);status.commands=`executing ${next.op}`;publish();
+          handled.add(next.commandId);lastTried.set(next.commandId,Date.now());status.commands=`executing ${next.op}`;publish();
           execution=executeCommand({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
             runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal},next.commandId)
             .then(()=>{status.commands=`completed ${next.op}`;publish();})
