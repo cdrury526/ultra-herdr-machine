@@ -7,7 +7,7 @@ import { listMessageHistory } from "../history/list";
 import { listTaskHierarchy } from "../history/tasks";
 import { readInbox } from "../receive/inbox";
 import { peekDelivery, peekTicket, type TicketAnchor } from "./peek";
-import { findAssignmentMessage, scaffoldComplete, scaffoldRelease } from "./scaffold";
+import { findAssignmentMessage, scaffoldComplete, scaffoldFeedback, scaffoldRelease } from "./scaffold";
 
 export type TaskAction = { command: string; ready: boolean; reason?: string; argv: string[] };
 
@@ -55,6 +55,15 @@ export async function readTaskContext(options: {
       actions.push({ command: "complete", ready: true, argv: ["herdr-cli", "complete", "--task", taskId, "--summary", "Task completed."] });
     } catch (error) {
       actions.push({ command: "complete", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
+    }
+    if (review.review.reviewId) {
+      try {
+        scaffolds.feedback = scaffoldFeedback(review, "Apply these corrections.");
+        actions.push({ command: "feedback", ready: true,
+          argv: ["herdr-cli", "feedback", "--task", taskId, "--note", "Apply these corrections."] });
+      } catch (error) {
+        actions.push({ command: "feedback", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
+      }
     }
   }
   if (release && !release.released && !release.closing && release.terminal) {

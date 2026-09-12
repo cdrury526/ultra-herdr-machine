@@ -4,6 +4,15 @@ import { releaseResultSchemas, reviewResultSchemas } from "@ultra-herdr/api";
 type ReviewState = z.infer<typeof reviewResultSchemas.state>;
 type ReleaseState = z.infer<typeof releaseResultSchemas.state>;
 
+export function scaffoldFeedback(state: ReviewState, feedback: string, corrections: string[] = [feedback]) {
+  if (state.terminal) throw new Error("Task is already terminal.");
+  if (!state.review?.submissionId || !state.review.reviewId) throw new Error("No current submission review to feedback.");
+  return { taskId: state.taskId, submissionId: state.review.submissionId, expectedOwnerEpoch: state.ownerEpoch,
+    expectedRevision: state.revision, reviewId: state.review.reviewId, reviewGeneration: state.review.reviewGeneration,
+    briefKey: "review-feedback", values: { payload: { submissionId: state.review.submissionId, feedback, corrections } },
+    bundleValues: {} };
+}
+
 export function scaffoldComplete(state: ReviewState, summary: string) {
   if (state.terminal) throw new Error("Task is already terminal.");
   if (!state.review?.submissionId) throw new Error("No current submission to complete.");

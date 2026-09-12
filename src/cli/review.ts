@@ -3,15 +3,20 @@ import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { sendReview, reviewState, operatorReviewState, budgetState, type ReviewOptions } from "../review/client";
-import { completeByTask } from "../task/completeTask";
+import { completeByTask, feedbackByTask } from "../task/reviewByTask";
 
 function reviewAction(command: "complete" | "feedback" | "revise" | "extend" | "resume",
-  options: ReviewOptions & { task?: string; summary?: string }) {
+  options: ReviewOptions & { task?: string; summary?: string; note?: string }) {
   if (command === "complete" && options.task) {
     if (options.input) throw new Error("Use either --task or --input, not both.");
     return completeByTask({ config: options.config!, task: options.task, summary: options.summary, requestFile: options.requestFile });
   }
-  if (!options.input) throw new Error("Provide --input, or use complete --task for automatic scaffolding.");
+  if (command === "feedback" && options.task) {
+    if (options.input) throw new Error("Use either --task or --input, not both.");
+    if (!options.note) throw new Error("Provide --note when using feedback --task.");
+    return feedbackByTask({ config: options.config!, task: options.task, note: options.note, requestFile: options.requestFile });
+  }
+  if (!options.input) throw new Error("Provide --input, or use --task scaffolding where available.");
   return sendReview(command, options);
 }
 
@@ -30,10 +35,14 @@ export function addReviewCommands(program: Command) {
       cmd.option("--task <id>", "Complete using current review-state scaffolding")
         .option("--summary <text>", "Completion evidence summary when using --task")
         .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+    } else if (command === "feedback") {
+      cmd.option("--task <id>", "Send feedback using current review-state scaffolding")
+        .option("--note <text>", "Feedback text when using --task")
+        .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
     } else {
       cmd.requiredOption("--input <file>", "Typed JSON input including task, expected epochs and brief slots; review commands also require submission; omit requestId");
     }
-    cmd.action(async (options: ReviewOptions & { task?: string; summary?: string }) => {
+    cmd.action(async (options: ReviewOptions & { task?: string; summary?: string; note?: string }) => {
       console.log(JSON.stringify(await reviewAction(command, options)));
     });
   }
