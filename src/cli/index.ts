@@ -1,3 +1,4 @@
+import {addDispatchCommand} from "./dispatch";
 import { addRuntimeCommands } from "./runtime";
 import { addOwnershipCommands } from "./ownership";
 import { addReleaseCommands } from "./release";
@@ -26,11 +27,12 @@ import metadata from "../../package.json";
 
 const program = new Command()
   .name("herdr-cli")
-  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Cooperative stops/resumes, allowance extensions, typed questions/replies/nudges, authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; dispatch remains in development.`)
+  .description(`Ultra-herdr machine CLI (protocol ${PROTOCOL_VERSION}). Cooperative stops/resumes, allowance extensions, typed questions/replies/nudges, authenticated receipt, history, worker reports and parent revisions, completion, feedback and failure are available; typed dispatch coordinates interactive worker execution.`)
   .version(metadata.version)
   .showHelpAfterError();
 
 addAuthCommands(program);
+addDispatchCommand(program);
 addRuntimeCommands(program);
 addCatalogCommands(program);
 addContextCommands(program);

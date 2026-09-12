@@ -15,7 +15,7 @@ const reviewScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.stri
 const conversationScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
   kind: z.literal("conversation"), operation: z.enum(["question", "reply", "nudge"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const releaseScopeShape = z.object({ deploymentUrl: z.string(), machineId: z.string(), callerSessionId: z.string(),
-  kind: z.enum(["session_release", "session_ancestry", "session_force_review", "session_force_release", "session_handoff", "session_takeover"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+  kind: z.enum(["dispatch", "session_release", "session_ancestry", "session_force_review", "session_force_release", "session_handoff", "session_takeover"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 export type ReleaseScope = z.infer<typeof releaseScopeShape>;
 const operatorReleaseScopeShape = z.object({ deploymentUrl: z.string(), operatorId: z.string(),
   kind: z.enum(["history_cleanup", "operator_session_release", "operator_force_review", "operator_force_release", "operator_handoff", "operator_takeover", "operator_reply", "operator_nudge"]), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
