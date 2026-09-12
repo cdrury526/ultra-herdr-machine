@@ -1,3 +1,5 @@
+import { executeCommand } from "../execution/execute";
+import { PROTOCOL_VERSION } from "@ultra-herdr/api";
 import { ConvexError } from "convex/values";
 import { ConvexClient } from "convex/browser";
 import { contextApi as api, contextResultSchemas as result, runtimeApi, runtimeResultSchemas } from "@ultra-herdr/api";
@@ -67,6 +69,9 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     let serverIntent: { requestId: string; expectedServerEpoch: number } | undefined;
     let pending: { verificationRequestId: string; serverBindingId: string; expiresAt: number }[] = [];
     let subscribed = false, delay = settings.policy.retryIntervalMs;
+    let commands: {commandId:string;protocolVersion:number;op:string}[] = [];
+    let execution:Promise<void>|undefined;
+    const handled=new Set<string>();
     while (!signal.aborted) {
       try {
         // Observe locally even when the cloud is offline, retaining a verifiable local TUI acknowledgement.
@@ -107,7 +112,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           const unavailable = () => { status.commands = "unavailable"; status.operator = "unavailable"; publish(); };
           subscriptions.push(client.onUpdate(runtimeApi.inbox, fence, value => {
             const inbox = runtimeResultSchemas.inbox.parse(value);
-            status.commands = `${inbox.items.length}${inbox.more ? "+" : ""} pending (execution not installed yet)`; publish();
+            commands=inbox.items; status.commands = `${inbox.items.length}${inbox.more ? "+" : ""} pending`; publish();
           }, unavailable));
           subscriptions.push(client.onUpdate(runtimeApi.operatorStatus, fence, value => {
             const inbox = runtimeResultSchemas.operatorStatus.parse(value);
@@ -123,6 +128,15 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           await answerCaller(client, fence, request.verificationRequestId, observation, settings.policy.defaultDiscoveryProfileId);
         }
         status.state = "ready"; publish();
+        const next=commands.find(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send"].includes(c.op));
+        if(next && !execution) {
+          handled.add(next.commandId);status.commands=`executing ${next.op}`;publish();
+          execution=executeCommand({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
+            runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal},next.commandId)
+            .then(()=>{status.commands=`completed ${next.op}`;publish();})
+            .catch(()=>{status.commands=`blocked ${next.op} — inspect command state`;publish();})
+            .finally(()=>{execution=undefined;});
+        }
       } catch (error) {
         if (error instanceof ConvexError && error.data && typeof error.data === "object" &&
             "code" in error.data && ["UNAUTHENTICATED", "FORBIDDEN"].includes(String(error.data.code))) status.auth = "unavailable — renew or recover credentials";
