@@ -14,9 +14,9 @@ export async function localTarget(settings:Installation,config:ExecutionConfig,e
   if(proof.anchor && !t.foreground.some(f=>f.pid===proof.anchor!.pid && f.startIdentity===proof.anchor!.startIdentity))throw Error("TARGET_UNAVAILABLE");
   return {observed,terminal:t};
 }
-export async function effect(settings:Installation,fingerprint:string,op:RuntimeOperation,requestId:string) {
+export async function effect(settings:Installation,fingerprint:string,op:RuntimeOperation,requestId:string,beforeWrite:()=>void) {
   return withVerifiedHerdr({socketPath:settings.socketPath,sessionName:settings.sessionName,uid:process.getuid!(),timeoutMs:settings.policy.inspectionTimeoutMs,maxResponseBytes:settings.policy.maxResponseBytes},async(connection,server)=>{
-    if(server.fingerprint!==fingerprint)throw Error("STALE_BINDING");return connection.execute(op,requestId);
+    if(server.fingerprint!==fingerprint)throw Error("STALE_BINDING");beforeWrite();return connection.execute(op,requestId);
   });
 }
 export async function screen(settings:Installation,fingerprint:string,paneId:string,lines:number,maxBytes:number) {

@@ -1,3 +1,4 @@
+import {recovery} from "../execution/recover";
 import { executeCommand } from "../execution/execute";
 import { PROTOCOL_VERSION } from "@ultra-herdr/api";
 import { ConvexError } from "convex/values";
@@ -31,7 +32,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
   if (!sessionGuard(settings)) throw new Error("Wrong enrolled Herdr session.");
   const lock = runtimeLock(join(directory, "runtime.lock"));
   if (!lock.held) { lock.close(); throw new Error("A system runtime already holds the local lock."); }
-  let execution:Promise<void>|undefined;
+  let execution:Promise<void>|undefined,maintenance:Promise<void>|undefined;
   let client: ConvexClient | undefined, fence: { runtimeEpoch: number; recoveryEpoch: number } | undefined;
   let server: { serverBindingId: string; serverEpoch: number; fingerprint: string } | undefined;
   const subscriptions: (() => void)[] = [];
@@ -71,7 +72,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     let pending: { verificationRequestId: string; serverBindingId: string; expiresAt: number; launchProfile?:{terminalId:string;discoveryProfileId:string} }[] = [];
     let subscribed = false, delay = settings.policy.retryIntervalMs;
     let commands: {commandId:string;protocolVersion:number;op:string}[] = [];
-    const handled=new Set<string>();
+    const handled=new Set<string>(),recover=recovery();
     while (!signal.aborted) {
       try {
         // Observe locally even when the cloud is offline, retaining a verifiable local TUI acknowledgement.
@@ -123,6 +124,13 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           subscriptions.push(client.onUpdate(api.pendingCallers, fence, value => { pending = value; }, unavailable));
           subscribed = true;
         }
+        if(!execution && !maintenance) {
+          maintenance=recover({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
+            runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal}).then(recovered=>{
+            if(recovered.unresolved || recovered.blocked)status.commands=`${recovered.unresolved} require reconciliation; ${recovered.received} received; ${recovered.blocked} blocked`;
+          }).finally(()=>{maintenance=undefined;});
+          await bounded(maintenance,settings.policy.inspectionTimeoutMs);
+        }
         for (const request of pending) {
           if (request.expiresAt <= Date.now() || request.serverBindingId !== server.serverBindingId) continue;
           const observation = await observe(settings);
@@ -130,7 +138,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           await answerCaller(client, fence, request.verificationRequestId, observation, settings.policy.defaultDiscoveryProfileId, request.launchProfile);
         }
         status.state = "ready"; publish();
-        const next=commands.find(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","snapshot"].includes(c.op));
+        const next=commands.find(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op));
         if(next && !execution) {
           handled.add(next.commandId);status.commands=`executing ${next.op}`;publish();
           execution=executeCommand({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
@@ -159,6 +167,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     if (client && fence) await bounded(client.mutation(api.reportHealth, { ...fence, state: "offline" }), 2000).catch(() => undefined);
     await client?.close();
     await execution?.catch(()=>undefined);
+    await maintenance?.catch(()=>undefined);
     lock.close();
   }
 }
