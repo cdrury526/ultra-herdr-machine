@@ -28,6 +28,7 @@ import { addMetaCommands } from "./meta";
 import { formatBuildVersion } from "../buildInfo";
 import { addTraceCommands } from "./trace";
 import { addSinkCommand } from "./sink";
+import { setCallerHint, type Side } from "../context/heldTickets";
 
 const program = new Command()
   .name("herdr-cli")
@@ -53,6 +54,14 @@ addOwnershipCommands(program);
 addConversationCommands(program);
 addTraceCommands(program);
 addSinkCommand(program);
+// D175: `--task` commands present the ticket this machine redeemed for that task, on the side the command acts for.
+const WORKER_COMMANDS = new Set(["submit", "report-failure"]);
+program.hook("preAction", (_program, action) => {
+  const task = action.opts().task;
+  if (typeof task !== "string") return;
+  const sides: Side[] = WORKER_COMMANDS.has(action.name()) ? ["worker"] : action.name() === "context" ? ["owner", "worker"] : ["owner"];
+  setCallerHint({ task, sides });
+});
 program.action(() => program.help());
 try {
   await program.parseAsync();

@@ -1,6 +1,7 @@
 import {resolve} from "node:path";
 import {dispatchApi,dispatchResultSchemas,parseJson,canonicalJson,jsonDigest} from "@ultra-herdr/api";
 import {messageContext} from "../reports/context";
+import {setCallerHint} from "../context/heldTickets";
 import {reportRequest} from "../reports/journal";
 import {readReportFile,reportLimits,ReportError,reportFailure} from "../reports/input";
 export async function dispatch(options:{config:string;input:string;requestFile:string}){
@@ -9,6 +10,8 @@ export async function dispatch(options:{config:string;input:string;requestFile:s
     if(requestFile===config||requestFile===inputFile)throw new ReportError("Use a separate protected dispatch request file.");
     const input=parseJson(readReportFile(inputFile),reportLimits,"dispatch");
     if(!input||typeof input!=="object"||Array.isArray(input)||Object.hasOwn(input,"requestId"))throw new ReportError("Provide dispatch input as an object; the CLI generates requestId.");
+    const parent=(input as {parentTaskId?:unknown}).parentTaskId;
+    if(typeof parent==="string")setCallerHint({task:parent,sides:["worker"]});
     const {caller,profile,client}=await messageContext(config);
     const body={machineId:caller.machineId,...input},inputDigest=(await jsonDigest(body,reportLimits,"dispatch")).value;
     const requestId=await reportRequest(requestFile,{deploymentUrl:profile.convexUrl,machineId:caller.machineId,callerSessionId:caller.sessionId,kind:"dispatch",inputDigest});

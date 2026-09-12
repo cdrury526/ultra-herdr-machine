@@ -8,11 +8,10 @@ export async function localTarget(settings:Installation,config:ExecutionConfig,e
   if(observed.server.fingerprint!==expectedServer)throw Error("STALE_BINDING");
   const proof=config.targetIdentity;
   if(!proof)return {observed,terminal:null};
-  const matches=observed.terminals.filter(t=>t.terminalId===proof.terminalId && t.shell?.pid===proof.shell.pid && t.shell.startIdentity===proof.shell.startIdentity);
-  if(matches.length!==1 || matches[0].state!=="observed")throw Error("TARGET_UNAVAILABLE");
-  const t=matches[0];
-  if(proof.anchor && !t.foreground.some(f=>f.pid===proof.anchor!.pid && f.startIdentity===proof.anchor!.startIdentity))throw Error("TARGET_UNAVAILABLE");
-  return {observed,terminal:t};
+  // D175: the pane is an address. Whatever runs in its foreground (a harness tool call, a receive) must not block delivery.
+  const matches=observed.terminals.filter(t=>t.terminalId===proof.terminalId);
+  if(matches.length!==1)throw Error("TARGET_UNAVAILABLE");
+  return {observed,terminal:matches[0]};
 }
 export async function effect(settings:Installation,fingerprint:string,op:RuntimeOperation,requestId:string,beforeWrite:()=>void) {
   return withVerifiedHerdr({socketPath:settings.socketPath,sessionName:settings.sessionName,uid:process.getuid!(),timeoutMs:settings.policy.inspectionTimeoutMs,maxResponseBytes:settings.policy.maxResponseBytes},async(connection,server)=>{

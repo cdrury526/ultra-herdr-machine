@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values";
 import { authApi, contextApi, contextResultSchemas, PROTOCOL_VERSION } from "@ultra-herdr/api";
 import { loadProfile, clientFor } from "../auth/client";
 import { collectCallerEvidence } from "./evidence";
+import { candidateTickets } from "./heldTickets";
 import { ContextError, type ContextErrorCode } from "./errors";
 
 const hints: Record<ContextErrorCode, string> = {
@@ -43,13 +44,26 @@ export async function resolveCaller(configPath: string) {
     const client = clientFor(profile, boundedFetch);
     const deployment = await client.query(authApi.deploymentInfo, {});
     if (deployment.protocolVersion !== PROTOCOL_VERSION) throw failure("UNSUPPORTED_CONTEXT");
-    const evidence = collectCallerEvidence();
-    const args = { requestId: crypto.randomUUID(), evidence };
+    // D175: a held ticket names its recipient session directly; pane evidence is only the fallback (e.g. root managers).
+    for (const ticket of candidateTickets(configPath)) {
+      try {
+        const byTicket = contextResultSchemas.resolveTicketCaller.parse(await client.mutation(contextApi.resolveTicketCaller, { requestId: crypto.randomUUID(), ticket }));
+        if (byTicket.status === "verified" && byTicket.machineId === profile.machineId) return byTicket;
+      } catch { /* Stale or foreign ticket: try the next one, then pane evidence. */ }
+    }
+    let evidence = collectCallerEvidence(), retries = 3;
+    let args = { requestId: crypto.randomUUID(), evidence };
     while (performance.now() < deadline) {
       const started = performance.now();
       const result = contextResultSchemas.resolveCaller.parse(await client.mutation(contextApi.resolveCaller, args));
       if (performance.now() >= deadline) throw failure("STALE_BINDING");
-      if (result.status === "rejected") throw failure(result.code);
+      if (result.status === "rejected") {
+        // A fresh pane can be missed by the runtime's observation; a new request re-observes (fallback path only).
+        if (result.code !== "UNKNOWN_CONTEXT" || retries-- <= 0) throw failure(result.code);
+        await new Promise(done => setTimeout(done, 1500));
+        evidence = collectCallerEvidence(); args = { requestId: crypto.randomUUID(), evidence };
+        continue;
+      }
       if (result.status === "verified") {
         if (result.machineId !== profile.machineId || !Number.isSafeInteger(result.bindingEpoch) || result.bindingEpoch < 1) throw failure("CONFLICTING_CONTEXT");
         return result;
