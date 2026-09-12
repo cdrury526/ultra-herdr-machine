@@ -4,8 +4,9 @@ Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
 verification. Message receipt, retained history, typed worker reports and parent cooperative stops, revisions, completion, feedback and failure are available. Compiled enrollment installs a visible system runtime with singleton startup,
-authenticated heartbeat, caller verification and connection/inbox status. Worker
-command execution and public dispatch are not yet available.
+authenticated heartbeat, caller verification and connection/inbox status. The runtime executes catalog-configured worker launch, compact ticket delivery and
+explicit release. Public dispatch is available; integrated lifecycle/recovery
+acceptance is still in progress.
 
 Requires Bun 1.4.2 to build. Installed compiled binaries do not require Node.
 
@@ -153,7 +154,22 @@ with that review and a new apply request file. Existing exports are never replac
 
 The compiled catalog smoke exercises live import/patch, complete validation,
 review/apply, retries, canonical export round trip and rollback without Node/Bun
-on PATH. Dispatch and the complete system runtime remain later work.
+on PATH.
+
+## Dispatch a task
+
+From an interactive enrolled manager, run:
+
+```sh
+herdr-cli dispatch --input assignment.json --request-file dispatch-request.json
+```
+
+The input supplies `briefKey`, `launchProfileKey`, `workingDirectory`, `values`
+and `bundleValues`; the CLI supplies caller context and the request identity.
+Keep the same input and request file for retries. Acceptance returns task/message/
+session identifiers; it does not mean the worker has received or completed the task.
+The backend pins catalog contracts and coordinates launch through the machine runtime.
+Terminal delivery contains only the receive command and opaque ticket.
 
 ## Receive a message
 
