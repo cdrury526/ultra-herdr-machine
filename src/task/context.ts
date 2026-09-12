@@ -7,7 +7,9 @@ import { listMessageHistory } from "../history/list";
 import { listTaskHierarchy } from "../history/tasks";
 import { readInbox } from "../receive/inbox";
 import { peekDelivery, peekTicket, type TicketAnchor } from "./peek";
-import { findAssignmentMessage, scaffoldComplete, scaffoldFeedback, scaffoldRelease } from "./scaffold";
+import { defaultExtensionMs } from "./reviewByTask";
+import { findAssignmentMessage, scaffoldComplete, scaffoldExtend, scaffoldFeedback, scaffoldRelease, scaffoldResume, scaffoldRevise } from "./scaffold";
+import { loadAssignmentPayload } from "./resolveAssignment";
 
 export type TaskAction = { command: string; ready: boolean; reason?: string; argv: string[] };
 
@@ -49,21 +51,46 @@ export async function readTaskContext(options: {
     actions.push({ command: "receive", ready: true,
       argv: ["herdr-cli", "receive", "--delivery", item.deliveryId, "--generation", String(item.generation)] });
   }
-  if (review && !review.terminal && review.review?.submissionId) {
-    try {
-      scaffolds.complete = scaffoldComplete(review, "Task completed.");
-      actions.push({ command: "complete", ready: true, argv: ["herdr-cli", "complete", "--task", taskId, "--summary", "Task completed."] });
-    } catch (error) {
-      actions.push({ command: "complete", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
-    }
-    if (review.review.reviewId) {
+  if (review && !review.terminal) {
+    if (review.review?.submissionId) {
       try {
-        scaffolds.feedback = scaffoldFeedback(review, "Apply these corrections.");
-        actions.push({ command: "feedback", ready: true,
-          argv: ["herdr-cli", "feedback", "--task", taskId, "--note", "Apply these corrections."] });
+        scaffolds.complete = scaffoldComplete(review, "Task completed.");
+        actions.push({ command: "complete", ready: true, argv: ["herdr-cli", "complete", "--task", taskId, "--summary", "Task completed."] });
       } catch (error) {
-        actions.push({ command: "feedback", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
+        actions.push({ command: "complete", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
       }
+      if (review.review.reviewId) {
+        try {
+          scaffolds.feedback = scaffoldFeedback(review, "Apply these corrections.");
+          actions.push({ command: "feedback", ready: true,
+            argv: ["herdr-cli", "feedback", "--task", taskId, "--note", "Apply these corrections."] });
+        } catch (error) {
+          actions.push({ command: "feedback", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
+        }
+      }
+    }
+    try {
+      const payload = await loadAssignmentPayload(config, taskId);
+      scaffolds.revise = scaffoldRevise(review, payload, "Clarify assignment.");
+      actions.push({ command: "revise", ready: true,
+        argv: ["herdr-cli", "revise", "--task", taskId, "--reason", "Clarify assignment."] });
+    } catch (error) {
+      actions.push({ command: "revise", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
+    }
+    try {
+      const allowanceMs = await defaultExtensionMs(config, taskId);
+      scaffolds.extend = scaffoldExtend(review, allowanceMs, "More time for this task.");
+      actions.push({ command: "extend", ready: true,
+        argv: ["herdr-cli", "extend", "--task", taskId, "--allowance-ms", String(allowanceMs), "--reason", "More time for this task."] });
+    } catch (error) {
+      actions.push({ command: "extend", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
+    }
+    try {
+      scaffolds.resume = scaffoldResume(review, "Continue after stop.");
+      actions.push({ command: "resume", ready: true,
+        argv: ["herdr-cli", "resume", "--task", taskId, "--reason", "Continue after stop."] });
+    } catch (error) {
+      actions.push({ command: "resume", ready: false, reason: error instanceof Error ? error.message : "Unavailable", argv: [] });
     }
   }
   if (release && !release.released && !release.closing && release.terminal) {

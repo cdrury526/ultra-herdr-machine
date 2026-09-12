@@ -29,6 +29,30 @@ export function scaffoldRelease(state: ReleaseState, reason: string) {
     values: { payload: {} }, bundleValues: {} };
 }
 
+export function scaffoldRevise(state: ReviewState, payload: Record<string, unknown>, changeReason: string) {
+  if (state.terminal) throw new Error("Task is already terminal.");
+  if (state.pendingRevision) throw new Error("A revision is already awaiting receipt.");
+  return { taskId: state.taskId, expectedOwnerEpoch: state.ownerEpoch, expectedRevision: state.revision,
+    briefKey: "revision", values: { payload: { ...payload, changeReason } }, bundleValues: {} };
+}
+
+export function scaffoldExtend(state: ReviewState, addedAllowanceMs: number, reason: string) {
+  if (state.terminal) throw new Error("Task is already terminal.");
+  if (!Number.isSafeInteger(addedAllowanceMs) || addedAllowanceMs <= 0) throw new Error("Provide a positive allowance increment.");
+  return { taskId: state.taskId, expectedOwnerEpoch: state.ownerEpoch, expectedRevision: state.revision,
+    addedAllowanceMs, briefKey: "extension", values: { payload: { reason } }, bundleValues: {} };
+}
+
+export function scaffoldResume(state: ReviewState, reason: string) {
+  if (state.terminal) throw new Error("Task is already terminal.");
+  if (!state.stop) throw new Error("Task is not stopped.");
+  if (state.stop.epoch <= state.stop.resumedThroughEpoch) throw new Error("Task is not stopped.");
+  if (state.pendingRevision) throw new Error("Finish or receive the pending revision before resuming.");
+  if (state.pendingResume && !state.pendingResume.superseded) throw new Error("A resume is already awaiting receipt.");
+  return { taskId: state.taskId, expectedOwnerEpoch: state.ownerEpoch, expectedRevision: state.revision,
+    expectedStopEpoch: state.stop.epoch, briefKey: "resume", values: { payload: { reason } }, bundleValues: {} };
+}
+
 /** Latest assignment or revision message on the task timeline. */
 export function findAssignmentMessage(messages: Array<{ kind: string; messageId: string }>) {
   for (let i = messages.length - 1; i >= 0; i--) {

@@ -1,12 +1,17 @@
 import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { sendReview, reviewState, operatorReviewState, budgetState, type ReviewOptions } from "../review/client";
-import { completeByTask, feedbackByTask } from "../task/reviewByTask";
+import { completeByTask, extendByTask, feedbackByTask, resumeByTask, reviseByTask } from "../task/reviewByTask";
 
-function reviewAction(command: "complete" | "feedback" | "revise" | "extend" | "resume",
-  options: ReviewOptions & { task?: string; summary?: string; note?: string }) {
+type ReviewCliOptions = ReviewOptions & {
+  task?: string; summary?: string; note?: string; reason?: string; allowanceMs?: string; data?: string; dataFile?: string;
+};
+
+function taskModes(options: ReviewCliOptions) {
+  return [options.task, options.input, options.data, options.dataFile].filter(v => v !== undefined && v !== "").length;
+}
+
+function reviewAction(command: "complete" | "feedback" | "revise" | "extend" | "resume", options: ReviewCliOptions) {
   if (command === "complete" && options.task) {
     if (options.input) throw new Error("Use either --task or --input, not both.");
     return completeByTask({ config: options.config!, task: options.task, summary: options.summary, requestFile: options.requestFile });
@@ -16,8 +21,59 @@ function reviewAction(command: "complete" | "feedback" | "revise" | "extend" | "
     if (!options.note) throw new Error("Provide --note when using feedback --task.");
     return feedbackByTask({ config: options.config!, task: options.task, note: options.note, requestFile: options.requestFile });
   }
+  if (command === "revise" && options.task) {
+    if (taskModes(options) > 2 || options.input) throw new Error("Use --task with --reason and optional --data/--data-file, not --input.");
+    if (!options.reason) throw new Error("Provide --reason when using revise --task.");
+    return reviseByTask({ config: options.config!, task: options.task, reason: options.reason,
+      requestFile: options.requestFile, data: options.data, dataFile: options.dataFile });
+  }
+  if (command === "extend" && options.task) {
+    if (taskModes(options) > 2 || options.input) throw new Error("Use --task with --allowance-ms and --reason, not --input.");
+    if (!options.reason) throw new Error("Provide --reason when using extend --task.");
+    const allowanceMs = Number(options.allowanceMs);
+    if (!Number.isSafeInteger(allowanceMs) || allowanceMs <= 0) throw new Error("Provide a positive --allowance-ms when using extend --task.");
+    return extendByTask({ config: options.config!, task: options.task, allowanceMs, reason: options.reason,
+      requestFile: options.requestFile, data: options.data, dataFile: options.dataFile });
+  }
+  if (command === "resume" && options.task) {
+    if (taskModes(options) > 2 || options.input) throw new Error("Use --task with --reason and optional --data/--data-file, not --input.");
+    if (!options.reason) throw new Error("Provide --reason when using resume --task.");
+    return resumeByTask({ config: options.config!, task: options.task, reason: options.reason,
+      requestFile: options.requestFile, data: options.data, dataFile: options.dataFile });
+  }
   if (!options.input) throw new Error("Provide --input, or use --task scaffolding where available.");
   return sendReview(command, options);
+}
+
+function addTaskOptions(cmd: Command, command: "complete" | "feedback" | "revise" | "extend" | "resume") {
+  if (command === "complete") {
+    cmd.option("--task <id>", "Complete using current review-state scaffolding")
+      .option("--summary <text>", "Completion evidence summary when using --task")
+      .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+  } else if (command === "feedback") {
+    cmd.option("--task <id>", "Send feedback using current review-state scaffolding")
+      .option("--note <text>", "Feedback text when using --task")
+      .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+  } else if (command === "revise") {
+    cmd.option("--task <id>", "Revise using current assignment payload scaffolding")
+      .option("--reason <text>", "changeReason when using --task")
+      .option("--data <json>", "Optional assignment payload overrides when using --task")
+      .option("--data-file <file>", "Optional assignment payload overrides file when using --task")
+      .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+  } else if (command === "extend") {
+    cmd.option("--task <id>", "Extend allowance using current review-state scaffolding")
+      .option("--allowance-ms <ms>", "Positive allowance increment when using --task")
+      .option("--reason <text>", "Extension reason when using --task")
+      .option("--data <json>", "Optional brief slot overrides when using --task")
+      .option("--data-file <file>", "Optional brief slot overrides file when using --task")
+      .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+  } else {
+    cmd.option("--task <id>", "Resume using current stop metadata scaffolding")
+      .option("--reason <text>", "Resume reason when using --task")
+      .option("--data <json>", "Optional brief slot overrides when using --task")
+      .option("--data-file <file>", "Optional brief slot overrides file when using --task")
+      .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
+  }
 }
 
 export function addReviewCommands(program: Command) {
@@ -31,18 +87,8 @@ export function addReviewCommands(program: Command) {
       : "Increase the task allowance within its original limits; never implicitly resume stopped work.")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for unchanged retries")
       .option("--config <file>", "Protected machine profile", config);
-    if (command === "complete") {
-      cmd.option("--task <id>", "Complete using current review-state scaffolding")
-        .option("--summary <text>", "Completion evidence summary when using --task")
-        .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
-    } else if (command === "feedback") {
-      cmd.option("--task <id>", "Send feedback using current review-state scaffolding")
-        .option("--note <text>", "Feedback text when using --task")
-        .option("--input <file>", "Typed JSON input including task, expected epochs and brief slots; omit requestId");
-    } else {
-      cmd.requiredOption("--input <file>", "Typed JSON input including task, expected epochs and brief slots; review commands also require submission; omit requestId");
-    }
-    cmd.action(async (options: ReviewOptions & { task?: string; summary?: string; note?: string }) => {
+    addTaskOptions(cmd, command);
+    cmd.action(async (options: ReviewCliOptions) => {
       console.log(JSON.stringify(await reviewAction(command, options)));
     });
   }
