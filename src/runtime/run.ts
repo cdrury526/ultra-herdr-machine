@@ -76,8 +76,11 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
     const handled=new Set<string>(),lastTried=new Map<string,number>(),recover=recovery();
     // Starts the next queued command as soon as it arrives or the previous one settles; the
     // heartbeat loop below is only the fallback, so commands no longer wait out its interval.
-    let tryStart: (() => void) | undefined;
+    let tryStart: (() => void) | undefined, lastMaintenanceAt = 0;
+    const RETRY_BACKOFF_MS = 2000, MAINTENANCE_DUE_MS = 15000;
     while (!signal.aborted) {
+      // Fast starts are valid only for a healthy iteration's server; each iteration re-arms them.
+      tryStart = undefined;
       try {
         // Observe locally even when the cloud is offline, retaining a verifiable local TUI acknowledgement.
         const observation = await observe(settings), actual = processOwner(observation, self.pid, self.startIdentity);
@@ -130,6 +133,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
           subscribed = true;
         }
         if(!execution && !maintenance) {
+          lastMaintenanceAt=Date.now();
           maintenance=recover({client,settings,directory,machineId:profile.machineId,deploymentId:profile.convexUrl,
             runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal}).then(recovered=>{
             if(recovered.unresolved || recovered.blocked)status.commands=`${recovered.unresolved} require reconciliation; ${recovered.received} received; ${recovered.blocked} blocked`;
@@ -145,9 +149,10 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
         status.state = "ready"; publish();
         const liveClient=client,liveFence=fence,liveServer=server;
         tryStart=()=>{
-          if(execution || maintenance || signal.aborted)return;
+          if(execution || maintenance || signal.aborted || server!==liveServer)return;
           // A rejected stale target must not monopolize retries ahead of valid work.
-          const next=commands.filter(c=>!handled.has(c.commandId) && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op))
+          const now=Date.now();
+          const next=commands.filter(c=>!handled.has(c.commandId) && now-(lastTried.get(c.commandId)??0)>=RETRY_BACKOFF_MS && c.protocolVersion===PROTOCOL_VERSION && ["split","send","close","snapshot"].includes(c.op))
             .sort((a,b)=>(lastTried.get(a.commandId)??0)-(lastTried.get(b.commandId)??0))[0];
           if(!next)return;
           handled.add(next.commandId);lastTried.set(next.commandId,Date.now());status.commands=`executing ${next.op}`;publish();
@@ -161,7 +166,9 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
                 if(current.state==="pending" || (current.state==="claimed" && !current.attempt?.started))handled.delete(next.commandId);
               }catch { /* Preserve uncertainty until an authenticated status read succeeds. */ }
             })
-            .finally(()=>{execution=undefined;tryStart?.();});
+            .finally(()=>{execution=undefined;
+              // Let a due recovery pass run on the next tick before starting more work.
+              if(Date.now()-lastMaintenanceAt<MAINTENANCE_DUE_MS)try{tryStart?.();}catch{/* next tick retries */}});
         };
         tryStart();
       } catch (error) {
