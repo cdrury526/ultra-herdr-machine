@@ -11,6 +11,7 @@ import { protectedDirectory,type Installation } from "../runtime/config";
 import { observe } from "../runtime/observation";
 import { executionConfig,bootstrap } from "./config";
 import { localTarget,effect,screen,target,wait,foregroundAnchor } from "./local";
+import { resolveWorkersSplitPane } from "./workersTab";
 import { encode,hash,journalFile,loadJournal,saveJournal,observation,type Journal } from "./journal";
 const claimSchema=z.object({attempt:commandAttempt,lease:commandLease,nextPhase:z.string()}).strict();
 export interface ExecutorContext {client:ConvexClient;settings:Installation;directory:string;machineId:string;deploymentId:string;runtime:{instanceId:string;epoch:number};fence:{runtimeEpoch:number;recoveryEpoch:number};fingerprint:string;signal:AbortSignal}
@@ -45,8 +46,10 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
     if(!record) {
       await authority();
       const route=target(envelope);
-      const local=envelope.payload.op==="close" && await inspectClose(settings,ctx.fingerprint,envelope.payload.target.paneId,config)?{terminal:null}:await localTarget(settings,config,ctx.fingerprint);
-      if(route && local.terminal?.paneId!==route.paneId && !(envelope.payload.op==="close" && !local.terminal))throw Error("STALE_BINDING");
+      if(envelope.payload.op!=="split") {
+        const local=envelope.payload.op==="close" && await inspectClose(settings,ctx.fingerprint,envelope.payload.target.paneId,config)?{terminal:null}:await localTarget(settings,config,ctx.fingerprint);
+        if(route && local.terminal?.paneId!==route.paneId && !(envelope.payload.op==="close" && !local.terminal))throw Error("STALE_BINDING");
+      }
       const start=await durable(`start-${phase}`,requestId=>({action:"start",requestId,attempt:claim.attempt,phase,commandDigest:envelope.commandDigest}));
       deadline=start.startedAt+commandLease.parse(start.value.lease).durationMs-config.timing.localLeaseGuardMs;
       await authority();
@@ -58,7 +61,9 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
         if(p.op==="split") {
           const cwd=config.launch?.bootstrap.cwd==="{{workingDirectory}}"?config.workingDirectory:config.launch?.bootstrap.cwd;
           if(!cwd)throw Error("Missing launch cwd.");
-          const raw:any=await effect(settings,ctx.fingerprint,{method:"pane.split",params:{target_pane_id:p.anchor.paneId,direction:p.direction,...(p.ratio?{ratio:p.ratio}:{}),cwd,focus:false,env:{ULTRA_HERDR_ALLOCATION:p.allocationId}}},record.rpcRequestId,beforeWrite);
+          const workersLabel=config.launch?.provisioning?.workersTabLabel??"Workers";
+          const splitPane=await resolveWorkersSplitPane(settings,ctx.fingerprint,workersLabel,cwd,[p.anchor.paneId]);
+          const raw:any=await effect(settings,ctx.fingerprint,{method:"pane.split",params:{target_pane_id:splitPane,direction:p.direction,...(p.ratio?{ratio:p.ratio}:{}),cwd,focus:false,env:{ULTRA_HERDR_ALLOCATION:p.allocationId}}},record.rpcRequestId,beforeWrite);
           const paneId=z.string().min(1).parse(raw.pane?.pane_id);
           result={kind:"split",observedAt:Date.now(),allocationId:p.allocationId,newSessionId:p.newSessionId,serverBindingId:p.anchor.serverBindingId,paneId,rpcRequestId:record.rpcRequestId};
         } else if(p.op==="send") {

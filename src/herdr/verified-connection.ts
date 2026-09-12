@@ -28,8 +28,9 @@ function socketIdentity(target: VerificationTarget) {
   return { device: stat.dev.toString(), inode: stat.ino.toString() };
 }
 /** Runtime/setup component only. Task CLI modules must not import this transport. */
+const provisionMethods = new Set(["tab.list", "tab.create", "session.snapshot"]);
 export async function withVerifiedHerdr<T>(target: VerificationTarget,
-  operation: (connection: { execute: (operation: RuntimeOperation, requestId: string) => Promise<unknown>; screen: (paneId: string, lines: number) => Promise<unknown>; read: (method: "session.snapshot" | "pane.process_info", paneId?: string) => Promise<unknown>; openSystemPane: (params: { plugin_id: string; entrypoint: string; placement: "tab"; focus: false; env: Record<string, string> }) => Promise<unknown> },
+  operation: (connection: { execute: (operation: RuntimeOperation, requestId: string) => Promise<unknown>; screen: (paneId: string, lines: number) => Promise<unknown>; read: (method: "session.snapshot" | "pane.process_info", paneId?: string) => Promise<unknown>; rpc: (method: string, params: Record<string, unknown>, requestId?: string) => Promise<unknown>; openSystemPane: (params: { plugin_id: string; entrypoint: string; placement: "tab"; focus: false; env: Record<string, string> }) => Promise<unknown> },
     server: ServerObservation) => Promise<T>) {
   if (!Number.isSafeInteger(target.uid) || target.uid !== process.getuid?.() ||
       !target.sessionName || target.sessionName.length > 128 ||
@@ -96,6 +97,11 @@ export async function withVerifiedHerdr<T>(target: VerificationTarget,
       }
       busy = true;
       try { return await rpc(method, method === "pane.process_info" ? { pane_id: paneId! } : {}); }
+      finally { busy = false; }
+    }, rpc: async (method, params, requestId) => {
+      if (busy || !provisionMethods.has(method)) stale();
+      busy = true;
+      try { return await rpc(method, params, requestId); }
       finally { busy = false; }
     } }, server);
     if (busy) stale();
