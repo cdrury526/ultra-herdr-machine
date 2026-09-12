@@ -1,5 +1,18 @@
 # ultra-herdr-machine
 
+Ordinary task/message commands do not require catalog bundle inputs. Supply the
+response content in `values.payload` and its task/request reference. The backend
+selects the default operation brief, loads the pinned response contract and composes
+instruction bundles. New received requests include their full response payload JSON
+schemas and CLI submission instructions in `envelope.readableContent`.
+
+For `reply`, `expectedGeneration` is optional: omission responds under the current
+authorized obligation in the accepting transaction. An explicit generation retains
+its existing stale/historical behavior. Retry the same input with the same request
+journal. Legacy examples below that include empty `bundleValues` remain compatible;
+new callers should omit them. Instruction data cannot be overridden by callers.
+
+
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend

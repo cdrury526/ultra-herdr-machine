@@ -32,3 +32,8 @@ keep turns alive with wait tools, inbox/pane polling, or monitoring another agen
 work. Independent useful work may continue; waiting for another agent may not.
 Sending is complete when accepted; do not wait for recipient acknowledgement or
 task completion before yielding. A later notification starts the next turn.
+
+Ordinary task/message callers supply content and references, not bundleValues or
+internal catalog keys. Backend catalog revisions own instruction inputs and requests
+carry their pinned response schemas. Do not work around a backend composition failure
+by teaching workers catalog keys. Preserve content validation and caller authority.
