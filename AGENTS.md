@@ -22,3 +22,13 @@ Herdr panes, never print/headless/background agents. User-required launch flags:
 `agy --dangerously-skip-permissions`. Preserve additional required arguments.
 Product launch argv belongs in Convex catalog data, not machine-code branches.
 These flags are explicitly authorized; authentication and readiness still apply.
+
+### Yield after sending
+
+User requirement: managers, workers, reviewers and the coordinating development
+agent finish the current turn after dispatch/submission/question/reply when the
+next action depends on another agent. Resume on delivered notifications. Do not
+keep turns alive with wait tools, inbox/pane polling, or monitoring another agent's
+work. Independent useful work may continue; waiting for another agent may not.
+Sending is complete when accepted; do not wait for recipient acknowledgement or
+task completion before yielding. A later notification starts the next turn.
