@@ -20,8 +20,19 @@ export function secureUrl(value: string) {
   }
   return url.toString();
 }
+/** Convex answers 503 when a mutation keeps losing write conflicts (e.g. to the task's own background
+ * workflow steps). Nothing was committed, and task mutations carry journaled request ids, so a short retry is safe. */
+export function retryingFetch(base: typeof globalThis.fetch = globalThis.fetch): typeof globalThis.fetch {
+  return (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    for (let attempt = 0; ; attempt++) {
+      const response = await base(input, init);
+      if (response.status !== 503 || attempt >= 4) return response;
+      await new Promise(done => setTimeout(done, 200 * 2 ** attempt + Math.floor(Math.random() * 150)));
+    }
+  }) as typeof globalThis.fetch;
+}
 export function clientFor(profile: Profile, fetchOverride?: typeof globalThis.fetch) {
-  const client = new ConvexHttpClient(secureUrl(profile.convexUrl), { logger: false, ...(fetchOverride ? { fetch: fetchOverride } : {}) });
+  const client = new ConvexHttpClient(secureUrl(profile.convexUrl), { logger: false, fetch: retryingFetch(fetchOverride) });
   client.setAuth(profile.token);
   return client;
 }

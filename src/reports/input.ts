@@ -43,5 +43,7 @@ export function reportFailure(error: unknown): ReportError {
     for (const part of parts) { if (!fields.has(part) && !/^\d{1,6}$/.test(part)) break; safe.push(part); }
     return new ReportError(`${code}${detail}${safe.length ? ` at /${safe.join("/")}` : ""}. Check report fields and current caller authority; reuse the same request file when retrying unchanged input.`);
   }
+  if (error instanceof Error && /OptimisticConcurrency|Service Unavailable|\b503\b/i.test(error.message))
+    return new ReportError("Backend busy (write conflicts persisted after retries); nothing was applied. Retry unchanged input with the same request file.");
   return new ReportError("Report not confirmed. Check the input, protected request file and machine context, then retry unchanged input with the same request file.");
 }
