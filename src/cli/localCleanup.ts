@@ -1,3 +1,4 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -6,7 +7,7 @@ export function addLocalCleanupCommands(history: Command) {
   const local = history.command("local-cleanup").description("Preview and explicitly remove eligible verified local artifacts.");
   const common = (command: Command) => command
     .requiredOption("--preview-file <file>", "Protected preview manifest, separate from credentials and cached artifacts")
-    .option("--config <file>", "Protected machine profile and its adjacent artifact cache", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine profile and its adjacent artifact cache", defaultMachineConfig())
     .option("--released-session <id>", "Use retained grants of this machine's released session")
     .option("--operator-profile <file>", "Use history.manage and this operator profile's artifact cache");
   common(local.command("preview").description("Write a new preview; no cached file is removed."))

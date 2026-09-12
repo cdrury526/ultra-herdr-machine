@@ -1,3 +1,4 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -7,7 +8,7 @@ export function addReceiveCommand(program: Command) {
     .option("--ticket <ticket>", "Opaque message ticket")
     .option("--delivery <reference>", "Delivery reference from inbox; requires --generation")
     .option("--generation <number>", "Delivery generation from inbox")
-    .option("--config <file>", "Protected machine credential configuration", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine credential configuration", defaultMachineConfig())
     .action(async (options: { ticket?: string; delivery?: string; generation?: string; config: string }) => {
       if (Boolean(options.ticket) === Boolean(options.delivery) || (options.ticket && options.generation !== undefined) ||
           (options.delivery && (!options.generation || !/^[1-9][0-9]*$/.test(options.generation) || !Number.isSafeInteger(Number(options.generation)))))

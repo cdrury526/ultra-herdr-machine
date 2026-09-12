@@ -1,9 +1,10 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { requestFailure, failureStatus, type FailureOptions } from "../failure/client";
 export function addFailureCommands(program: Command) {
-  const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
+  const config = defaultMachineConfig();
   for (const kind of ["failure", "stop"] as const) for (const operator of [false, true]) {
     const request = program.command(`${operator ? "operator-" : ""}${kind === "failure" ? "fail" : "stop"}`)
       .description(kind === "failure" ? "Request parent-owned task failure and descendant disposition. Preparing is not accepted failure."

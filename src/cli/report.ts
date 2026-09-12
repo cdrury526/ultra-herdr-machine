@@ -1,3 +1,4 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -8,7 +9,7 @@ export function addReportCommands(program: Command) {
       .requiredOption("--assignment <message-id>", "Immutable assignment/revision message this report answers")
       .requiredOption("--input <file>", "JSON file with values, bundleValues and optional attributes")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for retries, choose a fresh path for a new report")
-      .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+      .option("--config <file>", "Protected machine profile", defaultMachineConfig())
       .action(async (options: ReportOptions) => { console.log(JSON.stringify(await sendReport(kind, options))); });
   }
 }

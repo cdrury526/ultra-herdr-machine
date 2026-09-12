@@ -1,9 +1,10 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { sendConversation, questionState, type ConversationOptions } from "../conversation/client";
 export function addConversationCommands(program: Command) {
-  const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
+  const config = defaultMachineConfig();
   for (const [command, kind] of [["ask", "question"], ["reply", "reply"], ["nudge", "nudge"]] as const) {
     program.command(command).description(kind === "question"
       ? "Send a typed task question; execution continues and expected-reply timing starts on receipt."

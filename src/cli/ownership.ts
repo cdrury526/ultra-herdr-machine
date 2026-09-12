@@ -1,3 +1,4 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -9,7 +10,7 @@ export function addOwnershipCommands(program: Command) {
       .requiredOption("--input <file>", "Typed operation, expected epochs and pinned notice selections")
       .requiredOption("--request-file <file>", "Protected retry journal; reuse for the same intent");
     if (operator) command.requiredOption("--operator-profile <file>", "Explicit operator profile with tasks.takeover and inbox.review");
-    else command.option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"));
+    else command.option("--config <file>", "Protected machine profile", defaultMachineConfig());
     command.action(async options => { console.log(JSON.stringify(await ownershipOperation(operation, options))); });
   }
 }

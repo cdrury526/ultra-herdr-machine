@@ -1,9 +1,10 @@
+import { defaultMachineConfig } from "../auth/default";
 import type { Command } from "commander";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { sendReview, reviewState, operatorReviewState, budgetState, type ReviewOptions } from "../review/client";
 export function addReviewCommands(program: Command) {
-  const config = join(homedir(), ".config", "ultra-herdr", "machine.json");
+  const config = defaultMachineConfig();
   for (const command of ["complete", "feedback", "revise", "extend", "resume"] as const) {
     program.command(command).description(command === "complete"
       ? "Accept the current submission as completed; retain the worker session."

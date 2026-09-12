@@ -3,9 +3,9 @@
 Public machine CLI for ultra-herdr. It supports explicit operator profiles,
 machine setup/recovery keys, credential registration, authenticated credential status
 and a renewal path. `whoami` resolves the caller through authenticated backend
-verification. Message receipt, retained history, typed worker reports and parent cooperative stops, revisions, completion, feedback and failure are available. Complete
-enrollment/system installation, dispatch, other parent decisions and the visible runtime
-are not yet available.
+verification. Message receipt, retained history, typed worker reports and parent cooperative stops, revisions, completion, feedback and failure are available. Compiled enrollment installs a visible system runtime with singleton startup,
+authenticated heartbeat, caller verification and connection/inbox status. Worker
+command execution and public dispatch are not yet available.
 
 Requires Bun 1.4.2 to build. Installed compiled binaries do not require Node.
 
@@ -24,6 +24,28 @@ metadata; no private backend source. Future functions are added as implemented.
 
 Keep credentials outside the checkout in protected product configuration. Do not
 commit machine configuration, tokens, environment files or signing keys.
+
+Enroll using the installed compiled binary and your local Herdr socket:
+
+```sh
+herdr-cli enroll --deployment http://127.0.0.1:33210 \
+  --key-file /secure/setup-key.json --name studio --session default \
+  --socket "$HOME/.config/herdr/herdr.sock" --herdr-bin "$HOME/.local/bin/herdr"
+herdr-cli whoami
+```
+
+Enrollment installs/enables the plugin and opens its system TUI without taking focus.
+Credentials default to the plugin configuration directory; a protected locator under
+`$XDG_CONFIG_HOME/ultra-herdr` (or `~/.config/ultra-herdr`) connects normal task
+commands to that identity. Explicit `--config` remains supported. Re-enrolling the
+same deployment/name/session preserves the existing authenticated identity.
+
+Plugin startup restores the runtime. `q` quits it and leaves it offline until explicit
+`herdr-cli ensure --herdr-bin /absolute/path/to/herdr` or subsequent startup.
+Concurrent ensure calls preserve one verified runtime; uncertain prior startup blocks
+relaunch until reconciled. A disconnected runtime shows unavailable status and retries
+verification. Authentication recovery still uses the explicit credential commands.
+The current command inbox is metadata/status only; it does not execute workers yet.
 
 Credential commands use explicit protected file paths:
 

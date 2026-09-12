@@ -1,3 +1,4 @@
+import { defaultMachineConfig } from "../auth/default";
 import { listTaskHierarchy } from "../history/tasks";
 import { checkReleaseAuthority, discardReleaseAuthority } from "../release/ancestry";
 import { listMessageHistory, type HistoryListOptions } from "../history/list";
@@ -12,11 +13,11 @@ export function addHistoryCommands(program: Command) {
   history.command("authority").description("Prove current ancestor access to one descendant task; repeat the same journal while searching.")
     .requiredOption("--task <id>", "Descendant task identity")
     .requiredOption("--request-file <file>", "Protected retry journal")
-    .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine profile", defaultMachineConfig())
     .action(async options => { console.log(JSON.stringify(await checkReleaseAuthority(options))); });
   history.command("authority-discard").description("Discard unused lineage proof after investigation.")
     .requiredOption("--check <id>", "Ancestry check identity")
-    .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine profile", defaultMachineConfig())
     .action(async options => { console.log(JSON.stringify(await discardReleaseAuthority(options))); });
   history.command("tasks").description("List current direct children or root descendants within current authority.")
     .requiredOption("--task <id>", "Parent task, or root task for descendants")
@@ -24,7 +25,7 @@ export function addHistoryCommands(program: Command) {
     .option("--ancestry-check <id>", "Verified ancestor proof for the parent task")
     .option("--cursor <cursor>", "Continue a page; restart when scope or membership changes")
     .option("--limit <count>", "Page size up to the deployment's configured bound")
-    .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine profile", defaultMachineConfig())
     .option("--operator-profile <file>", "Explicit operator profile with history.manage")
     .action(async options => { console.log(JSON.stringify(await listTaskHierarchy(options))); });
   addHistoryCleanupCommands(history);
@@ -34,7 +35,7 @@ export function addHistoryCommands(program: Command) {
     .option("--ancestry-check <id>", "Verified current ancestor proof for this task; live session only")
     .option("--cursor <cursor>", "Continue a previous page; restart if history or permissions changed")
     .option("--limit <count>", "Page size up to the deployment's configured bound")
-    .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine profile", defaultMachineConfig())
     .option("--released-session <id>", "Use this machine's recorded released session and its retained grants")
     .option("--operator-profile <file>", "Explicit operator profile with history.manage; excludes released-session mode")
     .action(async (options: HistoryListOptions) => { console.log(JSON.stringify(await listMessageHistory(options))); });
@@ -44,7 +45,7 @@ export function addHistoryCommands(program: Command) {
     .requiredOption("--message <id>", "Immutable message identity")
     .option("--digest <sha256>", "Expected message digest")
     .option("--packet <id>", "Received message explicitly referencing this body; --task is the packet task, operator requires inbox.review")
-    .option("--config <file>", "Protected machine profile", join(homedir(), ".config", "ultra-herdr", "machine.json"))
+    .option("--config <file>", "Protected machine profile", defaultMachineConfig())
     .option("--released-session <id>", "Use this machine's recorded released session and its retained grants")
     .option("--operator-profile <file>", "Explicit operator profile: history.manage, or inbox.review with --packet; excludes released-session mode")
     .action(async (options: HistoryOptions) => { console.log(JSON.stringify(await readMessageHistory(options))); });

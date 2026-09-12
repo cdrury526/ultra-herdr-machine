@@ -1,3 +1,4 @@
+import { addRuntimeCommands } from "./runtime";
 import { addOwnershipCommands } from "./ownership";
 import { addReleaseCommands } from "./release";
 import { ReleaseError } from "../release/client";
@@ -30,6 +31,7 @@ const program = new Command()
   .showHelpAfterError();
 
 addAuthCommands(program);
+addRuntimeCommands(program);
 addCatalogCommands(program);
 addContextCommands(program);
 addReceiveCommand(program);

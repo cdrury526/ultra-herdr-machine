@@ -24,7 +24,7 @@ function socketIdentity(target: VerificationTarget) {
 }
 /** Runtime/setup component only. Task CLI modules must not import this transport. */
 export async function withVerifiedHerdr<T>(target: VerificationTarget,
-  operation: (connection: { read: (method: "session.snapshot" | "pane.process_info", paneId?: string) => Promise<unknown> },
+  operation: (connection: { read: (method: "session.snapshot" | "pane.process_info", paneId?: string) => Promise<unknown>; openSystemPane: (params: { plugin_id: string; entrypoint: string; placement: "tab"; focus: false; env: Record<string, string> }) => Promise<unknown> },
     server: ServerObservation) => Promise<T>) {
   if (!Number.isSafeInteger(target.uid) || target.uid !== process.getuid?.() ||
       !target.sessionName || target.sessionName.length > 128 ||
@@ -48,7 +48,7 @@ export async function withVerifiedHerdr<T>(target: VerificationTarget,
           actual.pid !== peer.pid || actual.uid !== peer.uid || actual.gid !== peer.gid ||
           running.startIdentity !== process.startIdentity || running.pidNamespace !== process.pidNamespace) stale();
     }
-    async function rpc(method: string, params: Record<string, string>) {
+    async function rpc(method: string, params: Record<string, unknown>) {
       recheck();
       const id = randomUUID();
       // Herdr may close after each response. Authenticate each actual RPC connection.
@@ -76,7 +76,10 @@ export async function withVerifiedHerdr<T>(target: VerificationTarget,
     const server: ServerObservation = { ...observation,
       fingerprint: createHash("sha256").update(JSON.stringify(observation)).digest("hex") };
     let busy = false;
-    const result = await operation({ read: async (method, paneId) => {
+    const result = await operation({ openSystemPane: async params => {
+      if (busy || params.plugin_id !== "ultra-herdr.machine" || params.entrypoint !== "agent" || params.focus !== false) stale();
+      busy = true; try { return await rpc("plugin.pane.open", params); } finally { busy = false; }
+    }, read: async (method, paneId) => {
       if (busy || (method !== "session.snapshot" && method !== "pane.process_info") ||
           (method === "pane.process_info" && (!paneId || paneId.length > 128))) {
         throw new ContextError("UNSUPPORTED_CONTEXT", "Herdr verification requires one explicit read at a time.");
