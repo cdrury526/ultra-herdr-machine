@@ -27,7 +27,8 @@ async function bounded<T>(promise: Promise<T>, ms: number): Promise<T> {
   finally { clearTimeout(timer!); }
 }
 /** Owns state and subscriptions; Ink only renders onStatus. The runtime owns command execution and recovery. */
-export async function runAgent(directory: string, onStatus: (status: RuntimeStatus) => void, signal: AbortSignal) {
+export async function runAgent(directory: string, onStatus: (status: RuntimeStatus) => void, callerSignal: AbortSignal) {
+  const shutdown=new AbortController(),signal=AbortSignal.any([callerSignal,shutdown.signal]);
   const settings = installation(directory);
   if (!sessionGuard(settings)) throw new Error("Wrong enrolled Herdr session.");
   const lock = runtimeLock(join(directory, "runtime.lock"));
@@ -147,6 +148,7 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
             runtime:{instanceId:ack.runtime.instanceId,epoch:fence.runtimeEpoch},fence,fingerprint:server.fingerprint,signal},next.commandId)
             .then(()=>{status.commands=`completed ${next.op}`;publish();})
             .catch(async()=>{
+              if(signal.aborted)return;
               status.commands=`blocked ${next.op} — inspect command state`;publish();
               try {const current=JSON.parse((await client!.query(runtimeApi.commandStatus,{commandId:next.commandId})).canonical);
                 if(current.state==="pending" || (current.state==="claimed" && !current.attempt?.started))handled.delete(next.commandId);
@@ -165,11 +167,13 @@ export async function runAgent(directory: string, onStatus: (status: RuntimeStat
       await pause(delay, signal);
     }
   } finally {
+    shutdown.abort(); // Fence every delayed Herdr write before draining cloud work.
     subscriptions.forEach(stop => stop());
     if (client && fence) await bounded(client.mutation(api.reportHealth, { ...fence, state: "offline" }), 2000).catch(() => undefined);
     await client?.close();
-    await execution?.catch(()=>undefined);
-    await maintenance?.catch(()=>undefined);
+    // Convex close can leave a query waiting forever. The durable journal retains
+    // uncertainty; aborted executors cannot issue another Herdr effect.
+    await bounded(Promise.allSettled([execution,maintenance]),settings.policy.inspectionTimeoutMs).catch(()=>undefined);
     lock.close();
   }
 }
