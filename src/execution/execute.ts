@@ -62,10 +62,10 @@ export async function executeCommand(ctx:ExecutorContext,commandId:string) {
           const cwd=config.launch?.bootstrap.cwd==="{{workingDirectory}}"?config.workingDirectory:config.launch?.bootstrap.cwd;
           if(!cwd)throw Error("Missing launch cwd.");
           const workersLabel=config.launch?.provisioning?.workersTabLabel??"Workers";
-          const splitPane=await resolveWorkersSplitPane(settings,ctx.fingerprint,workersLabel,cwd,[p.anchor.paneId]);
-          const raw:any=await effect(settings,ctx.fingerprint,{method:"pane.split",params:{target_pane_id:splitPane,direction:p.direction,...(p.ratio?{ratio:p.ratio}:{}),cwd,focus:false,env:{ULTRA_HERDR_ALLOCATION:p.allocationId}}},record.rpcRequestId,beforeWrite);
+          const workers=await resolveWorkersSplitPane(settings,ctx.fingerprint,workersLabel,cwd,[p.anchor.paneId]);
+          const raw:any=await effect(settings,ctx.fingerprint,{method:"pane.split",params:{target_pane_id:workers.paneId,direction:p.direction,...(p.ratio?{ratio:p.ratio}:{}),cwd,focus:false,env:{ULTRA_HERDR_ALLOCATION:p.allocationId}}},record.rpcRequestId,beforeWrite);
           const paneId=z.string().min(1).parse(raw.pane?.pane_id);
-          result={kind:"split",observedAt:Date.now(),allocationId:p.allocationId,newSessionId:p.newSessionId,serverBindingId:p.anchor.serverBindingId,paneId,rpcRequestId:record.rpcRequestId};
+          result={kind:"split",observedAt:Date.now(),allocationId:p.allocationId,newSessionId:p.newSessionId,serverBindingId:p.anchor.serverBindingId,paneId,rpcRequestId:record.rpcRequestId,tabId:workers.tabId,tabLabel:workers.tabLabel};
         } else if(p.op==="send") {
           if(phase.endsWith(".text")) await effect(settings,ctx.fingerprint,{method:"pane.send_text",params:{pane_id:p.target.paneId,text:p.purpose==="bootstrap"?bootstrap(config,p.target.paneId):p.offerText}},record.rpcRequestId,beforeWrite);
           else await effect(settings,ctx.fingerprint,{method:"pane.send_keys",params:{pane_id:p.target.paneId,keys:["enter"]}},record.rpcRequestId,beforeWrite);

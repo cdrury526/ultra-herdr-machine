@@ -7,9 +7,9 @@ const snapshotSchema = z.object({
   type: z.literal("session_snapshot"),
   snapshot: z.object({ layouts: z.array(z.object({ tab_id: z.string(), panes: z.array(z.object({ pane_id: z.string() })) })) }),
 });
-const tabCreatedSchema = z.object({ type: z.literal("tab_created"), root_pane: z.object({ pane_id: z.string().min(1) }) });
+const tabCreatedSchema = z.object({ type: z.literal("tab_created"), tab: z.object({ tab_id: z.string().min(1) }), root_pane: z.object({ pane_id: z.string().min(1) }) });
 
-/** Resolve the Herdr pane to split from for worker provisioning (never the dispatch caller pane). */
+/** Resolve the Workers tab and the pane to split from (never the dispatch caller pane). */
 export async function resolveWorkersSplitPane(
   settings: Installation,
   fingerprint: string,
@@ -29,12 +29,12 @@ export async function resolveWorkersSplitPane(
         const snap = snapshotSchema.parse(await connection.rpc("session.snapshot", {}));
         const layout = snap.snapshot.layouts.find(l => l.tab_id === tabId);
         const candidate = layout?.panes.map(p => p.pane_id).find(id => !forbidden.has(id));
-        if (candidate) return candidate;
+        if (candidate) return { paneId: candidate, tabId, tabLabel: label };
       }
       const created = tabCreatedSchema.parse(await connection.rpc("tab.create", { cwd, focus: false, label }));
       const paneId = created.root_pane.pane_id;
       if (forbidden.has(paneId)) throw new Error("WORKERS_TAB_PROTECTED");
-      return paneId;
+      return { paneId, tabId: created.tab.tab_id, tabLabel: label };
     },
   );
 }
